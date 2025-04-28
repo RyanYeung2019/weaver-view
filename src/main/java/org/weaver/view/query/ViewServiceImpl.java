@@ -1,0 +1,487 @@
+package org.weaver.view.query;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.weaver.config.LangDefine;
+import org.weaver.config.ViewDefine;
+import org.weaver.config.entity.EnumApiEn;
+import org.weaver.config.entity.EnumDataEn;
+import org.weaver.config.entity.ViewEn;
+import org.weaver.config.entity.ViewField;
+import org.weaver.view.query.entity.EnumItemEn;
+import org.weaver.view.query.entity.FieldInfo;
+import org.weaver.view.query.entity.QueryCriteria;
+import org.weaver.view.query.entity.QueryFilter;
+import org.weaver.view.query.entity.SortByField;
+import org.weaver.view.query.entity.TreeData;
+import org.weaver.view.query.entity.ViewData;
+import org.weaver.view.query.entity.ViewRequestConfig;
+import org.weaver.view.query.mapper.BeanPropRowMapper;
+import org.weaver.view.query.mapper.CamelFieldMapper;
+import org.weaver.view.util.FormatterUtils;
+
+import com.alibaba.fastjson.JSONObject;
+
+@Component("viewService")
+public class ViewServiceImpl implements ViewService {
+
+	private static final Logger log = LoggerFactory.getLogger(ViewService.class);
+
+	@Autowired
+	ViewDao queryDao;
+
+	@Autowired
+	ViewDefine viewDefine;
+
+	@Autowired
+	LangDefine langDefine;
+	
+	public String translateText(String text, ViewRequestConfig viewReqConfig, Map<String, Object> tranParamMap) {
+		for(String key:viewReqConfig.getQueryParams().keySet()) {
+			if(tranParamMap==null)tranParamMap = new HashMap<>();
+			tranParamMap.put(key, viewReqConfig.getQueryParams().get(key));
+		}
+		Translator translator = new Translator(queryDao, langDefine, viewDefine, viewReqConfig, tranParamMap);
+		return translator.tranText(text);
+	}
+	
+	public String translateKey(String text, ViewRequestConfig viewReqConfig, Map<String, Object> tranParamMap) {
+		Translator translator = new Translator(queryDao, langDefine, viewDefine, viewReqConfig, viewReqConfig.getQueryParams());
+		return translator.tranKey(text,tranParamMap);
+	}
+
+	public Object getSetting(String lang,String key) {
+		return langDefine.getSetting(lang,key);
+	}
+	
+	public <T> ViewData<T> query(ViewEn viewEn, Map<String, Object> params, SortByField[] sortField,
+			Integer pageNum, Integer pageSize, QueryFilter queryFilter,List<String> aggrList, RowMapper<T> rowMapper,
+			ViewRequestConfig viewReqConfig) {
+		Date startTime = new Date();
+		ViewData<T> data = new ViewData<>();
+		if(pageNum!=null && pageSize!=null) {
+			data = queryViewData(viewEn,params,sortField,pageNum,pageSize,queryFilter,rowMapper,viewReqConfig);
+			if (pageNum.equals(0) || pageNum.equals(1)) {
+				updateViewInfo(viewEn, data, viewReqConfig);
+			}
+		}
+		if(aggrList!=null) {
+			LinkedHashMap<String, Object> aggregate = queryViewAggregate(viewEn, params, queryFilter,
+					aggrList, viewReqConfig);
+			data.setAggrs(aggregate);
+		}
+		if (sortField == null && pageNum==null && pageSize==null && queryFilter==null && aggrList == null) {
+			updateViewInfo(viewEn, data, viewReqConfig);
+		}
+		data.setStartTime(startTime);
+		data.setEndTime(new Date());
+		return data;
+	}
+	
+	
+	public <T> ViewData<T> queryViewData(ViewEn viewEn, Map<String, Object> params, SortByField[] sortField,
+			Integer pageNum, Integer pageSize, QueryFilter queryFilter, RowMapper<T> rowMapper,
+			ViewRequestConfig viewReqConfig) {
+		ViewData<T> viewData = new ViewData<>();
+		List<T> data = queryView(viewEn, params, sortField, pageNum, pageSize, queryFilter, rowMapper, viewReqConfig);
+		if(queryFilter!=null)viewData.setPrimarySearchValue(queryFilter.getPrimarySearchValue());
+		Map<String, Map<String, String>> valueMapping = getValueMapping(rowMapper,params,viewReqConfig);
+		viewData.setValueMapping(valueMapping);
+		viewData.setData(data);
+		return viewData;
+	}
+
+	public <T> List<T> queryView(ViewEn viewEn, Map<String, Object> params, SortByField[] sortField,
+			Integer pageNum, Integer pageSize, QueryFilter queryFilter, RowMapper<T> rowMapper,
+			ViewRequestConfig viewReqConfig) {
+		log.debug("queryView:"+viewEn.getViewId());
+		FilterCriteria filter = SqlUtils.paramFilter(queryFilter, viewEn.getListFields(), viewEn.getSourceType(),viewReqConfig);
+		if(filter!=null) queryFilter.setPrimarySearchValue(filter.getPrimarySearchValue());
+		Map<String, Object> queryParams = combineParam(viewEn, params, viewReqConfig);
+		if (rowMapper instanceof CamelFieldMapper) {
+			CamelFieldMapper camelFieldMapper = (CamelFieldMapper) rowMapper;
+			camelFieldMapper.setFieldList(viewEn.getListFields());
+			Translator translator = new Translator(queryDao, langDefine, viewDefine, viewReqConfig, queryParams);
+			camelFieldMapper.setTranslator(translator);
+			camelFieldMapper.setFieldMap(viewEn.getFieldMap());
+		}
+		if (rowMapper instanceof BeanPropRowMapper) {
+			BeanPropRowMapper<T> beanPropRowMapper = (BeanPropRowMapper<T>) rowMapper;
+			beanPropRowMapper.setFieldList(viewEn.getListFields());
+			Translator translator = new Translator(queryDao, langDefine, viewDefine, viewReqConfig, queryParams);
+			beanPropRowMapper.setTranslator(translator);
+			beanPropRowMapper.setFieldMap(viewEn.getFieldMap());
+		}
+		return queryDao.queryData(viewEn, queryParams, sortField, pageNum, pageSize, filter, rowMapper);
+	}
+
+	public LinkedHashMap<String, Object> queryViewAggregate(ViewEn viewEn, Map<String, Object> params, QueryFilter queryFilter,
+			List<String> aggrList, ViewRequestConfig viewReqConfig) {
+		log.debug("queryViewAggregate:"+viewEn.getViewId());
+		FilterCriteria filter = SqlUtils.paramFilter(queryFilter, viewEn.getListFields(), viewEn.getSourceType(),viewReqConfig);
+		Map<String, Object> queryParams = combineParam(viewEn, params, viewReqConfig);
+		return queryDao.queryViewAggregate(viewEn, queryParams, filter, aggrList);
+	}
+
+	public <T> void updateViewInfo(ViewEn viewEn, ViewData<T> data, ViewRequestConfig viewReqConfig) {
+		String viewId = viewEn.getViewId();
+		List<ViewField> viewFields = viewEn.getListFields();
+		List<FieldInfo> fieldInfos = new ArrayList<>();
+		for (ViewField viewField : viewFields) {
+			FieldInfo fieldInfo = new FieldInfo();
+			String field = viewField.getField();
+			fieldInfo.setField(field);
+			String langKeyName = String.format("%s.field.%s", viewId, field);
+			String fieldName = langDefine.getLangDef(viewReqConfig.getLanguage(), langKeyName, field);
+			fieldInfo.setName(fieldName);
+			String langKeyDesc = String.format("%s.field.%s.desc", viewId, field);
+			String fieldDesc = langDefine.getLangDef(viewReqConfig.getLanguage(), langKeyDesc, field);
+			fieldInfo.setDesc(fieldDesc);
+			fieldInfo.setType(viewField.getType());
+			fieldInfo.setPreci(viewField.getPreci());
+			fieldInfo.setScale(viewField.getScale());
+			fieldInfo.setNullable(viewField.getNullable());
+			fieldInfo.setEnumApi(viewField.getEnumApi());
+			List<EnumItemEn> enumItemEns = viewField.getEnumDataList();
+			if ((enumItemEns == null || enumItemEns.size() == 0) && viewField.getEnumDataString() != null) {
+				Object val = langDefine.getSetting(viewReqConfig.getLanguage(), viewField.getEnumDataString());
+				if (val != null && val instanceof EnumDataEn) {
+					EnumDataEn valEn = (EnumDataEn) val;
+					enumItemEns = new ArrayList<>();
+					for (String value : valEn.getData().keySet()) {
+						String text = valEn.getData().get(value);
+						EnumItemEn enumItemEn = new EnumItemEn(value, text);
+						enumItemEns.add(enumItemEn);
+					}
+				}
+			}
+			fieldInfo.setEnumDataList(enumItemEns);
+			JSONObject props = null;
+			for (String key : viewField.getProps().keySet()) {
+				if(props==null)props = new JSONObject();
+				props.put(key, viewField.getProps().get(key));
+			}
+			fieldInfo.setProps(props);
+			fieldInfos.add(fieldInfo);
+		}
+		data.setFields(fieldInfos);
+		String viewTitleKey = String.format("%s.name", viewId);
+		String viewName = langDefine.getLangDef(viewReqConfig.getLanguage(), viewTitleKey, viewId);
+		if (viewId.equals(viewName)) {
+			String viewTitle = viewEn.getName();
+			if(viewTitle!=null) viewName = viewTitle;
+		}
+		data.setName(viewName);
+		String viewDescKey = String.format("%s.desc", viewId);
+		String viewDesc = langDefine.getLangDef(viewReqConfig.getLanguage(), viewDescKey, viewId);
+		data.setDesc(viewDesc);
+		if (viewEn.getProps().keySet().size() > 0) {
+			data.setProps(viewEn.getProps());
+		}
+	}
+	
+	public <T> ViewData<TreeData<T>> queryTree(String viewId, Integer level, String parentValue, Map<String, Object> params,
+			SortByField[] sortField, String search, RowMapper<T> rowMapper, ViewRequestConfig viewReqConfig) {
+		if (level == null)
+			level = Integer.MAX_VALUE;
+		ViewEn viewEn = viewDefine.getView(viewId);
+		if (viewEn == null)
+			throw new RuntimeException(String.format("view %s is not exits! ", viewId));
+		String treeId=viewEn.getTreeId();
+		String treeParent=viewEn.getTreeParent();
+		if(treeId==null||treeParent==null) {
+			throw new RuntimeException(String.format("View %s is not support for query tree. One of id field, parent field is undefined!", viewId));
+		}
+		ViewData<TreeData<T>> treeData = new ViewData<>();
+		List<TreeData<T>> data = queryTree(viewEn,treeId,treeParent,level,0,parentValue,params,
+				 sortField,search,rowMapper,viewReqConfig);
+		Map<String, Map<String, String>> valueMapping = getValueMapping(rowMapper,params,viewReqConfig);
+		treeData.setValueMapping(valueMapping);
+		treeData.setData(data);
+		return treeData;
+	}
+	
+	
+	public <T> List<TreeData<T>> queryTree(ViewEn viewEn, String keyField, String parentField, Integer level, Integer currentLevel, String parentValue, Map<String, Object> params,
+			SortByField[] sortField,String search, RowMapper<T> rowMapper, ViewRequestConfig viewReqConfig){
+		currentLevel++;
+		List<TreeData<T>> result = new ArrayList<>();
+		if (currentLevel > level) return result;
+		
+		QueryFilter mainQueryFilter = null;
+		if (StringUtils.hasText(parentValue)) {
+			mainQueryFilter = new QueryFilter(new QueryCriteria(parentField, parentValue));
+		} else {
+			QueryCriteria queryCriteria = new QueryCriteria();
+			queryCriteria.setOp(QueryCriteria.OP_IS_EMPTY);
+			queryCriteria.setField(parentField);
+			mainQueryFilter = new QueryFilter(queryCriteria);
+		}
+		
+		List<T> nodes = queryView(viewEn, params, sortField, 0, 1000, mainQueryFilter, rowMapper, viewReqConfig);
+		
+		for (T node : nodes) {
+			TreeData<T> treeData = new TreeData<>();
+			treeData.setNode(node);
+			
+			String key = getValue(node,keyField);	
+			List<TreeData<T>> subItems = queryTree(viewEn, keyField, parentField, level,
+					currentLevel, key, params, sortField, search, rowMapper, viewReqConfig);
+			if (subItems.size() > 0) {
+				treeData.setChildren(subItems);
+				result.add(treeData);
+			}else {
+				if(StringUtils.hasText(search)) {
+					if(viewEn.getTreeSearch()==null||viewEn.getTreeSearch().size()==0) {
+						throw new RuntimeException(String.format("View %s did not support search. Please define tree.search!", viewEn.getViewId()));
+					}
+					for(String field:viewEn.getTreeSearch()) {
+						String value = getValue(node,field);
+						if(value!=null && value.contains(search)) {
+							result.add(treeData);
+							break;
+						}
+					}
+				}else {
+					result.add(treeData);	
+				}
+			}
+		}
+		return result;
+	}
+	
+	public <T> ViewData<TreeData<T>> queryTreePath(String viewId, String keyValue, Map<String, Object> params,
+			RowMapper<T> rowMapper,ViewRequestConfig viewReqConfig) {
+		log.debug("queryTreePath:" + viewId);
+		if (keyValue == null)
+			throw new RuntimeException("Value is not allow null!");
+		ViewEn viewEn = viewDefine.getView(viewId);
+		if (viewEn == null)
+			throw new RuntimeException(String.format("view %s is not exits! ", viewId));
+		String treeId=viewEn.getTreeId();
+		String treeParent=viewEn.getTreeParent();
+		if(treeId==null||treeParent==null) {
+			throw new RuntimeException(String.format("View %s is not support for query tree. One of id field, parent field is undefined!", viewId));
+		}
+		ViewData<TreeData<T>> treeData = new ViewData<>();
+		List<TreeData<T>> data = queryTreePath(viewEn,treeId,treeParent,keyValue,params,rowMapper,viewReqConfig);
+		Map<String, Map<String, String>> valueMapping = getValueMapping(rowMapper,params,viewReqConfig);
+		treeData.setValueMapping(valueMapping);
+		treeData.setData(data);
+		return treeData;
+	}
+	
+	
+	public ViewEn getViewInfo(String viewId) {
+		return viewDefine.getView(viewId);
+	}
+	
+	public ViewEn getViewInfo(String dataSource, String sql,Map<String, Object> critParams) {
+		ViewEn viewEn = queryDao.getViewInfo(dataSource, sql, critParams);
+		Map<String, ViewField> fieldMap = new HashMap<>();
+		for (ViewField viewField : viewEn.getListFields()) {
+			fieldMap.put(viewField.getField(), viewField);
+		}
+		LinkedHashMap<String,String> paramMap = new LinkedHashMap<>();
+		if(critParams!=null) {
+			for(String param:critParams.keySet()) {
+				Object value = critParams.get(param);
+				String type = FormatterUtils.convertFieldType(param, value.getClass().toString());
+				paramMap.put(param, type);
+			}
+		}
+		viewEn.setFieldMap(fieldMap);
+		viewEn.setViewId(sql);
+		viewEn.setParam(paramMap);
+		viewEn.setDataSource(dataSource);
+		viewEn.setSql(sql);
+		viewDefine.putView(sql, viewEn);
+		return viewEn;
+	}
+
+	private  <T> List<TreeData<T>> queryTreePath(ViewEn viewEn, String keyField, String parentField, String keyValue, Map<String, Object> params, RowMapper<T> rowMapper,
+			ViewRequestConfig viewReqConfig) {
+		QueryFilter queryFilter = new QueryFilter(new QueryCriteria(keyField, keyValue));
+		List<T> nodes = queryView(viewEn, params, null, 0, 2, queryFilter, rowMapper,
+				viewReqConfig);
+		List<TreeData<T>> result = new ArrayList<>();
+		if (nodes.size() > 1) throw new RuntimeException("More than one record returned!");
+		if (nodes.size() == 0) return result;
+		T node = nodes.get(0);
+		TreeData<T> tree = new TreeData<>();
+		tree.setNode(node);
+		result.add(tree);
+		String parentVal = getValue(node,parentField);
+		if (parentVal == null) {
+			return result;
+		} else {
+			List<TreeData<T>> subNotes = queryTreePath(viewEn, keyField, parentField, parentVal,
+					params,rowMapper, viewReqConfig);
+			result.addAll(subNotes);
+			return result;
+		}
+	}
+	
+	@SuppressWarnings("rawtypes")
+	private String getValue(Object object,String field) {
+		try {
+			if(object instanceof LinkedHashMap) {
+				return FormatterUtils.objectToString(((LinkedHashMap) object).get(field));
+			}else {
+				Class<?> clazz = object.getClass();
+				return FormatterUtils.objectToString(clazz.getField(field).get(object));
+			}			
+		}catch(Exception e) {
+			throw new RuntimeException(String.format("Cannot get value from %s!",field));
+		}
+	}
+
+	private Map<String, Object> combineParam(ViewEn viewEn, Map<String, Object> params,
+			ViewRequestConfig viewReqConfig) {
+		Map<String, Object> queryParams = new HashMap<>();
+		if (viewReqConfig.getQueryParams() != null) {
+			for (String key : viewReqConfig.getQueryParams().keySet()) {
+					queryParams.put(key, viewReqConfig.getQueryParams().get(key));
+			}
+		}
+		if (viewEn.getParam() == null) return queryParams;
+		LinkedHashMap<String, String> viewParam = viewEn.getParam();
+		if (viewParam.keySet().size()>0 && params == null)
+			throw new RuntimeException(
+					String.format("ViewId %s need to input param! %s", viewEn.getViewId(), viewParam));
+		for (String key : viewParam.keySet()) {
+			String type = viewParam.get(key);
+			if (type == null)
+				type = ViewField.FIELDTYPE_STRING;
+			Object value = params.get(key);
+			if (value == null) {
+				if(viewParam.get(key)==null )
+				throw new RuntimeException(
+						String.format("ViewId %s Param %s is require!", viewEn.getViewId(), key));
+			} else {
+				if(value instanceof String) {
+					queryParams.put(key, SqlUtils.convertObjVal(type, value,viewReqConfig));
+				}else {
+					queryParams.put(key, value);
+				}
+			}
+		}
+		return queryParams;
+	}
+	
+	private <T> Map<String, Map<String, Map<String, Object>>> getEnumFieldsValues(RowMapper<T> rowMapper){
+		if(rowMapper instanceof CamelFieldMapper) {
+			CamelFieldMapper camelFieldMapper = (CamelFieldMapper) rowMapper;
+			return camelFieldMapper.getEnumFieldsValues();
+		}
+		if(rowMapper instanceof BeanPropRowMapper) {
+			BeanPropRowMapper<T> beanPropRowMapper = (BeanPropRowMapper<T>) rowMapper;
+			return beanPropRowMapper.getEnumFieldsValues();
+		}
+		return null;
+	}
+	
+	private <T> List<ViewField> getFieldList(RowMapper<T> rowMapper){
+		if(rowMapper instanceof CamelFieldMapper) {
+			CamelFieldMapper camelFieldMapper = (CamelFieldMapper) rowMapper;
+			return camelFieldMapper.getFieldList();
+		}
+		if(rowMapper instanceof BeanPropRowMapper) {
+			BeanPropRowMapper<T> beanPropRowMapper = (BeanPropRowMapper<T>) rowMapper;
+			return beanPropRowMapper.getFieldList();
+		}
+		return null;
+	}
+	
+
+	private <T> Map<String, Map<String, String>> getValueMapping(RowMapper<T> rowMapper, Map<String, Object> params,ViewRequestConfig viewReqConfig){
+		Map<String, Map<String, Map<String, Object>>> enumFieldsValues = getEnumFieldsValues(rowMapper);
+		List<ViewField> fieldList = getFieldList(rowMapper);
+		Map<String, Map<String, String>> valueMapping = null;
+		if(fieldList==null || enumFieldsValues==null)return valueMapping;
+		for (ViewField viewField : fieldList) {
+			if ((viewField.getEnumDataMap() != null || viewField.getEnumDataString() != null)) {
+				String field = viewField.getField();
+				Map<String, Map<String, Object>> values = enumFieldsValues.get(field);
+				Map<String, String> enumDataMap = new HashMap<>();
+				Map<String, String> valueMapper = new HashMap<>();
+				if (viewField.getEnumDataMap() != null) {
+					valueMapper.putAll(viewField.getEnumDataMap());
+				} else {
+					Object val = langDefine.getSetting(viewReqConfig.getLanguage(),
+							viewField.getEnumDataString());
+					if (val != null && val instanceof EnumDataEn) {
+						EnumDataEn valEn = (EnumDataEn) val;
+						valueMapper.putAll(valEn.getData());
+					}
+				}
+				if(values!=null) {
+					for (String vkey : values.keySet()) {
+						String vval = valueMapper.get(vkey);
+						enumDataMap.put(vkey, vval);
+					}
+				}
+				if (valueMapping == null)
+					valueMapping = new HashMap<>();
+				valueMapping.put(viewField.getField(), enumDataMap);
+			}
+			if (viewField.getEnumApi() != null && enumFieldsValues != null) {
+				String field = viewField.getField();
+				EnumApiEn enumApiFieldsJO = viewField.getEnumApi();
+				String enumViewId = enumApiFieldsJO.getViewId();
+				String textField = enumApiFieldsJO.getTextField();
+				String valueField = enumApiFieldsJO.getValueField();
+				Map<String, Map<String, Object>> values = enumFieldsValues.get(field);
+				for (String vkey : values.keySet()) {
+					Map<String, Object> item = values.get(vkey);
+					Map<String, Object> enumApiParams = new HashMap<>();
+					if (params != null)
+						enumApiParams.putAll(params);
+					LinkedHashMap<String, String> paramJa = enumApiFieldsJO.getParam();
+					StringBuffer valueBuffer = new StringBuffer();
+					if (paramJa != null) {
+						for (String key : paramJa.keySet()) {
+							String paramField = paramJa.get(key);
+							Object value = item.get(paramField);
+							String paramValueStr = FormatterUtils.objectToString(value);
+							enumApiParams.put(key, paramValueStr);
+							valueBuffer.append(paramValueStr + "_");
+						}
+					}
+					Object filterValue = item.get(field);
+					String filterValueString = FormatterUtils.objectToString(filterValue);
+					valueBuffer.append(filterValueString);
+					QueryFilter enumQueryFilter = new QueryFilter(new QueryCriteria(valueField, filterValueString));
+					ViewEn enumViewEn = viewDefine.getView(enumViewId);
+					if (enumViewEn == null)
+						throw new RuntimeException(String.format("view %s is not exits! ", enumViewId));		
+					List<Map<String, Object>> enumApiData = queryView(enumViewEn, enumApiParams, null, 0, 1,
+							enumQueryFilter, new CamelFieldMapper(), viewReqConfig);
+					if (valueMapping == null)
+						valueMapping = new HashMap<>();
+					Map<String, String> valueMappingData = valueMapping.get(field);
+					if (valueMappingData == null)
+						valueMappingData = new HashMap<>();
+					for (Map<String, Object> enumApiDataItem : enumApiData) {
+						Object textValue = enumApiDataItem.get(textField);
+						String textValueStr = FormatterUtils.objectToString(textValue);
+						valueMappingData.put(valueBuffer.toString(), textValueStr);
+					}
+					valueMapping.put(field, valueMappingData);
+				}
+			}
+		}
+		return valueMapping;
+	}
+}
