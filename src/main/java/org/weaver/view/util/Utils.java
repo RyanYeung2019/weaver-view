@@ -6,8 +6,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Field;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Utils {
 
@@ -45,4 +48,31 @@ public class Utils {
 		result = !result.endsWith("/") ? (result + "/") : result;
 		return result;
 	}
+	
+    public static <T> Map<String, Object> entityToMap(T entity) {
+        Map<String, Object> map = new HashMap<>();
+        try {
+            for (Field field : entity.getClass().getDeclaredFields()) {
+                field.setAccessible(true);
+                map.put(field.getName(), field.get(entity));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return map;
+    }
+    
+    
+    public static <T> void mapToEntity(Map<String, Object> map, T instance) {
+        try {
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                Field field = instance.getClass().getDeclaredField(entry.getKey());
+                field.setAccessible(true);
+                field.set(instance, entry.getValue());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }    
+    
 }

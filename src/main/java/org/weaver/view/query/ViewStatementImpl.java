@@ -13,7 +13,7 @@ import org.weaver.view.query.entity.QueryFilter;
 import org.weaver.view.query.entity.SortByField;
 import org.weaver.view.query.entity.TreeData;
 import org.weaver.view.query.entity.ViewData;
-import org.weaver.view.query.entity.ViewRequestConfig;
+import org.weaver.view.query.entity.RequestConfig;
 import org.weaver.view.query.mapper.CamelFieldMapper;
 
 public class ViewStatementImpl implements ViewStatement {
@@ -28,7 +28,7 @@ public class ViewStatementImpl implements ViewStatement {
 	private Integer pageSize;
 	private QueryFilter queryFilter;
 	private List<String> aggrList;
-	private ViewRequestConfig viewReqConfig = new ViewRequestConfig();
+	private RequestConfig viewReqConfig = new RequestConfig();
 	private String dataSource = "dataSource";
 	
 	private String sql;
@@ -96,7 +96,7 @@ public class ViewStatementImpl implements ViewStatement {
 		this.value = value;
 	}	
 	
-	public void setViewReqConfig(ViewRequestConfig viewReqConfig) {
+	public void setViewReqConfig(RequestConfig viewReqConfig) {
 		String lang = viewReqConfig.getLanguage();
 		SimpleDateFormat dateFormat = (SimpleDateFormat) viewService.getSetting(lang, LangDefine.FORMAT_DATE);
 		if (dateFormat != null) {

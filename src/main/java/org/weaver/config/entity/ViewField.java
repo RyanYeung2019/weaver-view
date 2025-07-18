@@ -15,7 +15,8 @@ public class ViewField {
 	public static String FIELDTYPE_DATE = "date";
 	public static String FIELDTYPE_TIME = "time";
 	public static String FIELDTYPE_DATETIME = "datetime";
-	public static String FIELDTYPE_NUMBER = "number";	
+	public static String FIELDTYPE_NUMBER = "number";
+	public static String FIELDTYPE_OTHER = "other";	
 
 	private String field; // CamelCase Field Style
 
@@ -28,6 +29,8 @@ public class ViewField {
 	private String typeDb;
 
 	private String typeJava;
+	
+	private int sqlType;
 
 	private Integer preci;
 
@@ -150,6 +153,14 @@ public class ViewField {
 
 	public void setProps(JSONObject props) {
 		this.props = props;
+	}
+
+	public int getSqlType() {
+		return sqlType;
+	}
+
+	public void setSqlType(int sqlType) {
+		this.sqlType = sqlType;
 	}
 
 	@Override

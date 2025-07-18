@@ -8,7 +8,7 @@ import org.weaver.view.query.entity.QueryFilter;
 import org.weaver.view.query.entity.SortByField;
 import org.weaver.view.query.entity.TreeData;
 import org.weaver.view.query.entity.ViewData;
-import org.weaver.view.query.entity.ViewRequestConfig;
+import org.weaver.view.query.entity.RequestConfig;
 
 public interface ViewStatement {
 	
@@ -38,7 +38,7 @@ public interface ViewStatement {
 
 	public void setValue(String value);
 	
-	public void setViewReqConfig(ViewRequestConfig viewReqConfig);
+	public void setViewReqConfig(RequestConfig viewReqConfig);
 
 	public <T> ViewData<T> query(RowMapper<T> rowMapper);
 

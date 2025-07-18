@@ -7,6 +7,8 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -14,7 +16,8 @@ import java.util.List;
 import java.util.Map;
 
 import javax.sql.DataSource;
-
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,13 +26,23 @@ import org.springframework.jdbc.core.ArgumentPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterUtils;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Component;
 import org.weaver.config.entity.ViewEn;
 import org.weaver.config.entity.ViewField;
 import org.weaver.view.query.entity.SortByField;
 import org.weaver.view.query.entity.ViewData;
+import org.weaver.view.table.entity.FieldEn;
+import org.weaver.view.table.entity.ForeignKeyEn;
+import org.weaver.view.table.entity.ForeignRefFieldEn;
+import org.weaver.view.table.entity.IndexEn;
+import org.weaver.view.table.entity.IndexFieldEn;
+import org.weaver.view.table.entity.PrimaryKeyEn;
+import org.weaver.view.table.entity.TableEn;
+import org.weaver.view.table.entity.TableFK;
 import org.weaver.view.util.FormatterUtils;
 
 @Component("queryDao")
@@ -87,6 +100,7 @@ public class ViewDaoImpl implements ViewDao {
 							throw new RuntimeException(queryStr + " has duplicate fields!");
 						}
 						checkExistsField.add(name);
+						int sqlType = rem.getColumnType(i);
 						String type = rem.getColumnClassName(i);
 						Integer precision = rem.getPrecision(i);
 						Integer scale = rem.getScale(i);
@@ -95,9 +109,11 @@ public class ViewDaoImpl implements ViewDao {
 						String fieldName = FormatterUtils.toCamelCase(name);
 						ViewField viewField = new ViewField(fieldName);
 						viewField.setFieldDb(name);
-						viewField.setType(FormatterUtils.convertFieldType(name, type));
+						viewField.setSqlType(sqlType);
+						viewField.setType(FormatterUtils.convertSqlType(name, sqlType));
 						viewField.setTypeDb(typeDb);
 						viewField.setTypeJava(type);
+						
 						viewField.setPreci(precision);
 						viewField.setScale(scale);
 						if (nullable == ResultSetMetaData.columnNoNulls) {
@@ -114,6 +130,25 @@ public class ViewDaoImpl implements ViewDao {
 			throw new RuntimeException(e);
 		}
 		return listFields;
+	}
+	
+	public Integer executeSql(String dataSourceName, Map<String,Object> data, String sql,FieldEn autoIncrementField) {
+		String dataSourreBeanName = dataSourceName;
+		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName, DataSource.class);
+		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+		NamedParameterJdbcTemplate namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
+        SqlParameterSource parameterSource = new MapSqlParameterSource(data);
+        Integer result=0;
+        if(autoIncrementField!=null) {
+        	String aiField = autoIncrementField.getFieldId();
+            KeyHolder keyHolder = new GeneratedKeyHolder();
+            result = namedParameterJdbcTemplate.update(sql, parameterSource, keyHolder, new String[]{aiField} );
+            Number keys = keyHolder.getKey();
+           	data.put(aiField, keys.longValue());            	
+        }else {
+        	result = namedParameterJdbcTemplate.update(sql, parameterSource);
+        }
+		return result;
 	}
 
 	public LinkedHashMap<String, Object> queryViewAggregate(ViewEn viewEn, Map<String, Object> queryParams, FilterCriteria filter,
@@ -290,4 +325,153 @@ public class ViewDaoImpl implements ViewDao {
 		return type;
 	}
 
+	//TODO cached
+	public TableEn getTableInfo(String dataSourreBeanName,String table) {
+		TableEn tableEn = new TableEn(table);
+		final Map<String,List<TableFK>> tableForeig = new HashMap<>();
+		tableForeig.put(tableEn.getTableId(), new ArrayList<>());
+		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName, DataSource.class);
+    	try(Connection conn =  dataSource.getConnection();){
+    		DatabaseMetaData dbMeta = conn.getMetaData();
+    		String[] tableArray = table.split("[.]");
+    		String catalog = conn.getCatalog();
+    		String database = null;
+    		String tableName = null;
+    		if(tableArray.length==1) {
+        		tableName = tableArray[0];
+    		}else {
+    			catalog = tableArray[0];
+        		tableName = tableArray[1];
+    		}
+        	List<String> pk = new ArrayList<>();
+        	try(ResultSet tableList = dbMeta.getTables(catalog, database,tableName,new String[]{"TABLE"})){
+                while(tableList.next()){
+                	String tableDisp =(String) tableList.getObject("REMARKS");
+                    if(tableDisp!=null && tableDisp.trim().equals("")){
+                        tableDisp = null;
+                    }
+                    tableEn.setRemark(tableDisp);
+                }
+        	}
+            try(ResultSet keys = dbMeta.getPrimaryKeys(catalog, database,tableName)){
+            	List<PrimaryKeyEn> primaryKeyEns = new ArrayList<>();
+                while(keys.next()){
+                    String dbField = keys.getString("COLUMN_NAME");
+                    int keySeq = keys.getInt("KEY_SEQ");
+                    pk.add(keys.getString("pk_name"));
+                    String field = FormatterUtils.toCamelCase(dbField.toLowerCase());
+                    PrimaryKeyEn genDataPkEn = new PrimaryKeyEn(field,dbField);
+                    genDataPkEn.setSortField(Integer.valueOf(keySeq));
+                    primaryKeyEns.add(genDataPkEn);
+                }
+                Collections.sort(primaryKeyEns,new Comparator<PrimaryKeyEn>(){
+                    @Override
+					public int compare(PrimaryKeyEn arg0, PrimaryKeyEn arg1) {
+                        return arg0.getSortField().compareTo(arg1.getSortField());
+                    }
+                });
+                tableEn.setPrimaryKeyEns(primaryKeyEns);
+            }
+            try(ResultSet idxs = dbMeta.getIndexInfo(catalog, database, tableName, false, true)){
+            	List<IndexEn> indexEns = new ArrayList<>();
+                while(idxs.next()){
+                	String index_name = idxs.getString("index_name");
+                	if(!pk.contains(index_name) && index_name!=null){
+                		String fieldName = idxs.getString("column_name");
+                		Integer sortField = idxs.getInt("ordinal_position");
+                    	String nonUnique = idxs.getString("non_unique");
+                    	String ascOrDesc = idxs.getString("asc_or_desc");
+                    	
+                		IndexEn indexEn = new IndexEn(index_name);
+                        if(indexEns.contains(indexEn)){
+                        	indexEn = indexEns.get(indexEns.indexOf(indexEn));
+                        }
+						String field = FormatterUtils.toCamelCase(fieldName.toLowerCase());
+                		IndexFieldEn indexFieldEn = new IndexFieldEn(field,fieldName);
+						indexFieldEn.setSortField(sortField);
+						indexFieldEn.setField(field);
+						indexEn.getFieldIds().add(indexFieldEn);
+						indexEn.setNonUnique(nonUnique);
+						indexEn.setAscOrDesc(ascOrDesc);
+                        if(!indexEns.contains(indexEn)){
+                        	indexEns.add(indexEn);
+                        }
+                	}
+                }
+                for(IndexEn indexEn:indexEns){
+                	List<IndexFieldEn> indexFieldEns = indexEn.getFieldIds();
+                    Collections.sort(indexFieldEns,new Comparator<IndexFieldEn>(){
+                        @Override
+						public int compare(IndexFieldEn arg0, IndexFieldEn arg1) {
+                            return arg0.getSortField().compareTo(arg1.getSortField());
+                        }
+                    });
+                }
+                tableEn.setIndexEns(indexEns);
+
+                //Import foreign key
+                try(ResultSet impkey = dbMeta.getImportedKeys(catalog, database, tableName)){
+                	List<ForeignKeyEn> foreignKeyEns = new ArrayList<>();
+                    while(impkey.next()){
+                        String fkName = impkey.getString("fk_name").toLowerCase();
+                        String fkcolumnName = impkey.getString("fkcolumn_name");
+                        String fkcolumnNameField = FormatterUtils.toCamelCase(fkcolumnName.toLowerCase());
+
+                        String pktableName = impkey.getString("pktable_name");
+                        String pkcolumnName = impkey.getString("pkcolumn_name");
+                        String pkcolumnNameField = FormatterUtils.toCamelCase(pkcolumnName.toLowerCase());
+                        int keySeq = impkey.getInt("key_seq");
+                        ForeignKeyEn foreignKeyEn = new ForeignKeyEn(fkName);
+                        if(foreignKeyEns.contains(foreignKeyEn)){
+                        	foreignKeyEn = foreignKeyEns.get(foreignKeyEns.indexOf(foreignKeyEn));
+                        }
+                        ForeignRefFieldEn foreignRefFieldEn = new ForeignRefFieldEn(pkcolumnNameField,fkcolumnName);
+                        foreignRefFieldEn.setRefTable(pktableName);
+                        foreignRefFieldEn.setRefField(pkcolumnNameField,pkcolumnName);
+                        foreignRefFieldEn.setField(fkcolumnNameField);
+                        foreignRefFieldEn.setSortField(Integer.valueOf(keySeq));
+						foreignKeyEn.getForeignRefFieldEns().add(foreignRefFieldEn);
+                        if(!foreignKeyEns.contains(foreignKeyEn)){
+                        	foreignKeyEns.add(foreignKeyEn);
+                        }
+                    }
+                    tableEn.setForeignKeyEns(foreignKeyEns);
+                }
+                
+                try(ResultSet columns = dbMeta.getColumns(catalog, database, tableName, null)){
+                	List<FieldEn> fieldEns = new ArrayList<>();
+                	Map<String,FieldEn> fieldEnMap = tableEn.getFieldEnMap();
+                    while(columns.next()){
+                        String colName = columns.getString("COLUMN_NAME");
+                        String fieldLabel = columns.getString("REMARKS");
+                        String isAutoIncrement = columns.getString("IS_AUTOINCREMENT");
+                        int sqlType = columns.getInt("DATA_TYPE");
+                        if(fieldLabel!=null && fieldLabel.trim().equals("")){
+                            fieldLabel = null;
+                        }
+                        String fieldId = FormatterUtils.toCamelCase(colName);
+                        
+                        FieldEn genDataFieldEn = new FieldEn(fieldId);
+                        
+                        genDataFieldEn.setType(FormatterUtils.convertSqlType(colName, sqlType));
+                        genDataFieldEn.setFieldName(fieldLabel);
+                        genDataFieldEn.setFieldDb(colName);
+                        genDataFieldEn.setAutoInc("YES".equals(isAutoIncrement));
+                        fieldEns.add(genDataFieldEn);
+                        fieldEnMap.put(fieldId, genDataFieldEn);
+                    }
+                    tableEn.setFieldEns(fieldEns);
+                    tableEn.setFieldEnMap(fieldEnMap);
+                }                
+                
+            }
+    	}catch(SQLException e) {
+			throw new RuntimeException(e);
+		}
+    	return tableEn;
+	}	
+	
+	
+	
+	
 }

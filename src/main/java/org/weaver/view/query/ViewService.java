@@ -10,40 +10,45 @@ import org.weaver.view.query.entity.QueryFilter;
 import org.weaver.view.query.entity.SortByField;
 import org.weaver.view.query.entity.TreeData;
 import org.weaver.view.query.entity.ViewData;
-import org.weaver.view.query.entity.ViewRequestConfig;
+import org.weaver.view.query.entity.RequestConfig;
 
 interface ViewService {
+	<T> Integer insertViewTable(String view, T data);
+	
+	<T> Integer updateViewTable(String view, T data);
+	
+	<T> Integer deleteViewTable(String view, T data);
 
-	String translateText(String text, ViewRequestConfig viewReqConfig, Map<String, Object> tranParamMap);
+	String translateText(String text, RequestConfig viewReqConfig, Map<String, Object> tranParamMap);
 
-	String translateKey(String text, ViewRequestConfig viewReqConfig, Map<String, Object> tranParamMap);
+	String translateKey(String text, RequestConfig viewReqConfig, Map<String, Object> tranParamMap);
 
 	Object getSetting(String lang, String key);
 
 	<T> ViewData<T> query(ViewEn viewEn, Map<String, Object> params, SortByField[] sortField, Integer pageNum,
 			Integer pageSize, QueryFilter queryFilter, List<String> aggrList, RowMapper<T> rowMapper,
-			ViewRequestConfig viewReqConfig);
+			RequestConfig viewReqConfig);
 
 	<T> ViewData<T> queryViewData(ViewEn viewEn, Map<String, Object> params, SortByField[] sortField, Integer pageNum,
-			Integer pageSize, QueryFilter queryFilter, RowMapper<T> rowMapper, ViewRequestConfig viewReqConfig);
+			Integer pageSize, QueryFilter queryFilter, RowMapper<T> rowMapper, RequestConfig viewReqConfig);
 
 	<T> List<T> queryView(ViewEn viewEn, Map<String, Object> params, SortByField[] sortField, Integer pageNum,
-			Integer pageSize, QueryFilter queryFilter, RowMapper<T> rowMapper, ViewRequestConfig viewReqConfig);
+			Integer pageSize, QueryFilter queryFilter, RowMapper<T> rowMapper, RequestConfig viewReqConfig);
 
 	LinkedHashMap<String, Object> queryViewAggregate(ViewEn viewEn, Map<String, Object> params, QueryFilter queryFilter,
-			List<String> aggrList, ViewRequestConfig viewReqConfig);
+			List<String> aggrList, RequestConfig viewReqConfig);
 
-	<T> void updateViewInfo(ViewEn viewEn, ViewData<T> data, ViewRequestConfig viewReqConfig);
+	<T> void updateViewInfo(ViewEn viewEn, ViewData<T> data, RequestConfig viewReqConfig);
 
 	<T> ViewData<TreeData<T>> queryTree(String viewId, Integer level, String parentValue, Map<String, Object> params,
-			SortByField[] sortField, String search, RowMapper<T> rowMapper, ViewRequestConfig viewReqConfig);
+			SortByField[] sortField, String search, RowMapper<T> rowMapper, RequestConfig viewReqConfig);
 
 	<T> List<TreeData<T>> queryTree(ViewEn viewEn, String keyField, String parentField, Integer level,
 			Integer currentLevel, String parentValue, Map<String, Object> params, SortByField[] sortField,
-			String search, RowMapper<T> rowMapper, ViewRequestConfig viewReqConfig);
+			String search, RowMapper<T> rowMapper, RequestConfig viewReqConfig);
 
 	<T> ViewData<TreeData<T>> queryTreePath(String viewId, String keyValue, Map<String, Object> params,
-			RowMapper<T> rowMapper, ViewRequestConfig viewReqConfig);
+			RowMapper<T> rowMapper, RequestConfig viewReqConfig);
 
 	ViewEn getViewInfo(String viewId);
 

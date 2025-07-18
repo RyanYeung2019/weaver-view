@@ -44,17 +44,30 @@ public class FormatterUtils {
 		return value ? "true" : "false";
 	}
 	
-	public static String convertFieldType(String name, String javaType) {
-		String fieldType = null;
-		if (javaType.equals("java.lang.String")) {
-			fieldType = ViewField.FIELDTYPE_STRING;
-		} else if (javaType.equals("java.lang.Boolean")) {
+	public static String convertSqlType(String name, int sqlType) {
+		String fieldType = ViewField.FIELDTYPE_OTHER;
+		if (sqlType == java.sql.Types.BIT || sqlType == java.sql.Types.BOOLEAN)
 			fieldType = ViewField.FIELDTYPE_BOOLEAN;
-		} else if (javaType.equals("java.sql.Date")) {
+
+		if (sqlType == java.sql.Types.TINYINT || sqlType == java.sql.Types.ROWID || sqlType == java.sql.Types.SMALLINT
+				|| sqlType == java.sql.Types.INTEGER || sqlType == java.sql.Types.BIGINT
+				|| sqlType == java.sql.Types.FLOAT || sqlType == java.sql.Types.REAL || sqlType == java.sql.Types.DOUBLE
+				|| sqlType == java.sql.Types.NUMERIC || sqlType == java.sql.Types.DECIMAL)
+			fieldType = ViewField.FIELDTYPE_NUMBER;
+
+		if (sqlType == java.sql.Types.CHAR || sqlType == java.sql.Types.VARCHAR || sqlType == java.sql.Types.LONGVARCHAR
+				|| sqlType == java.sql.Types.NCHAR || sqlType == java.sql.Types.NVARCHAR
+				|| sqlType == java.sql.Types.LONGNVARCHAR || sqlType == java.sql.Types.NCLOB
+				|| sqlType == java.sql.Types.SQLXML)
+			fieldType = ViewField.FIELDTYPE_STRING;
+
+		if (sqlType == java.sql.Types.DATE)
 			fieldType = ViewField.FIELDTYPE_DATE;
-		} else if (javaType.equals("java.sql.Time")) {
+
+		if (sqlType == java.sql.Types.TIME || sqlType == java.sql.Types.TIME_WITH_TIMEZONE)
 			fieldType = ViewField.FIELDTYPE_TIME;
-		} else if (javaType.equals("java.sql.Timestamp")) {
+
+		if (sqlType == java.sql.Types.TIMESTAMP || sqlType == java.sql.Types.TIMESTAMP_WITH_TIMEZONE) {
 			fieldType = ViewField.FIELDTYPE_DATETIME;
 			String fieldName = name.toLowerCase();
 			if (fieldName.endsWith(ViewField.FIELDTYPE_TIME + "_only")) {
@@ -63,11 +76,10 @@ public class FormatterUtils {
 			if (fieldName.endsWith(ViewField.FIELDTYPE_DATE + "_only")) {
 				fieldType = ViewField.FIELDTYPE_DATE;
 			}
-		} else
-			fieldType = ViewField.FIELDTYPE_NUMBER;
-		if (fieldType == null) {
-			throw new RuntimeException("Not recognize field:[" + name + "] type:[" + javaType + "]!");
 		}
 		return fieldType;
 	}
+	
+
+
 }

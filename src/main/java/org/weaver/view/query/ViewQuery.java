@@ -27,4 +27,10 @@ public interface ViewQuery {
 	public ViewStatement prepareTree(String view);
 	
 	public ViewStatement prepareTree(String view,String[] sort);
+	
+	public <T> Integer insertViewTable(String view, T data); 
+	
+	public <T> Integer updateViewTable(String view, T data);
+	
+	public <T> Integer deleteViewTable(String view, T data); 
 }

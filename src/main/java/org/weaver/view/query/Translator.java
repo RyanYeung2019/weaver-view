@@ -18,7 +18,7 @@ import org.weaver.config.entity.EnumDataEn;
 import org.weaver.config.entity.ViewEn;
 import org.weaver.view.query.entity.QueryCriteria;
 import org.weaver.view.query.entity.QueryFilter;
-import org.weaver.view.query.entity.ViewRequestConfig;
+import org.weaver.view.query.entity.RequestConfig;
 import org.weaver.view.query.mapper.CamelFieldMapper;
 import org.weaver.view.util.FormatterUtils;
 
@@ -38,10 +38,10 @@ public class Translator {
 	private Pattern patternNamed = Pattern.compile("[$][{](\\w+)}");
 	private Map<String, String> tranMapView = new HashMap<>();
 	private Map<String, Object> tranParamMap = new HashMap<>();
-	private ViewRequestConfig viewReqConfig;
+	private RequestConfig viewReqConfig;
 
 	public Translator(ViewDao queryDao, LangDefine langDefine, ViewDefine viewDefine,
-			ViewRequestConfig viewReqConfig) {
+			RequestConfig viewReqConfig) {
 		super();
 		this.queryDao = queryDao;
 		this.langDefine = langDefine;
@@ -50,7 +50,7 @@ public class Translator {
 	}
 
 	public Translator(ViewDao queryDao, LangDefine langDefine, ViewDefine viewDefine, 
-			ViewRequestConfig viewReqConfig,Map<String, Object> tranParamMap) {
+			RequestConfig viewReqConfig,Map<String, Object> tranParamMap) {
 		super();
 		this.queryDao = queryDao;
 		this.langDefine = langDefine;

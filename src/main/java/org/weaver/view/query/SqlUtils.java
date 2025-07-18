@@ -3,6 +3,7 @@ package org.weaver.view.query;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,7 +15,7 @@ import org.springframework.util.StringUtils;
 import org.weaver.config.entity.ViewField;
 import org.weaver.view.query.entity.QueryCriteria;
 import org.weaver.view.query.entity.QueryFilter;
-import org.weaver.view.query.entity.ViewRequestConfig;
+import org.weaver.view.query.entity.RequestConfig;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -53,7 +54,7 @@ class SqlUtils {
 	}
 
 
-	public static FilterCriteria paramFilter(QueryFilter queryFilter, List<ViewField> viewFields, String dataSourceType,ViewRequestConfig viewReqConfig) {
+	public static FilterCriteria paramFilter(QueryFilter queryFilter, List<ViewField> viewFields, String dataSourceType,RequestConfig viewReqConfig) {
 		if(queryFilter==null)return null;
 		JSONObject jsonObject = queryFilter.toJSONObject();
 		if(jsonObject==null)return null;
@@ -71,7 +72,7 @@ class SqlUtils {
 	}
 
 	private static Map<String, String> loopFilterCriteria(JSONObject jsonObject, FilterCriteria filterCriteria,
-			List<ViewField> viewFields, String dataSourceType,ViewRequestConfig viewReqConfig) {
+			List<ViewField> viewFields, String dataSourceType,RequestConfig viewReqConfig) {
 		Map<String, String> result = new HashMap<>();
 		if (jsonObject.containsKey("criteria")) {
 			filterCriteria.setType(jsonObject.getString("type"));// [and/or]
@@ -145,34 +146,34 @@ class SqlUtils {
 		return result;
 	}
 
-	public static Object convertObjVal(String type, Object val,ViewRequestConfig viewReqConfig) {
+	public static Object convertObjVal(String type, Object val,RequestConfig viewReqConfig) {
 		if(val ==null) return null;
 		Object result = val;
 		if (ViewField.FIELDTYPE_BOOLEAN.equals(type)) {
 			result = Boolean.valueOf(val.toString());
 		}
-		if (ViewField.FIELDTYPE_DATE.equals(type) ) {
+		if (ViewField.FIELDTYPE_DATE.equals(type) && val instanceof String ) {
 			try {
 				result = viewReqConfig.getDateFormat().parse(val.toString());
 			} catch (ParseException e) {
 				throw new RuntimeException(String.format("Cannot parse %s to %s ",val,ViewField.FIELDTYPE_DATE));
 			}
 		}
-		if ( ViewField.FIELDTYPE_TIME.equals(type)) {
+		if ( ViewField.FIELDTYPE_TIME.equals(type) && val instanceof String ) {
 			try {
 				result = viewReqConfig.getTimeFormat().parse(val.toString());
 			} catch (ParseException e) {
 				throw new RuntimeException(String.format("Cannot parse %s to %s ",val,ViewField.FIELDTYPE_TIME));
 			}
 		}
-		if (ViewField.FIELDTYPE_DATETIME.equals(type)) {
+		if (ViewField.FIELDTYPE_DATETIME.equals(type) && val instanceof String ) {
 			try {
 				result = viewReqConfig.getDatetimeFormat().parse(val.toString());
 			} catch (ParseException e) {
 				throw new RuntimeException(String.format("Cannot parse %s to %s ",val,ViewField.FIELDTYPE_DATETIME));
 			}
 		}
-		if (ViewField.FIELDTYPE_NUMBER.equals(type)) {
+		if (ViewField.FIELDTYPE_NUMBER.equals(type) && val instanceof String) {
 			if (val.toString().contains(".")) {
 				result = Double.parseDouble(val.toString());
 			} else {

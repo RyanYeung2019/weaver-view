@@ -6,9 +6,12 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.weaver.config.LangDefine;
+import org.weaver.config.entity.ViewEn;
+import org.weaver.config.entity.ViewField;
 import org.weaver.view.query.entity.QueryFilter;
 import org.weaver.view.query.entity.SortByField;
-import org.weaver.view.query.entity.ViewRequestConfig;
+import org.weaver.view.query.entity.RequestConfig;
+import org.weaver.view.table.entity.TableEn;
 
 @Component("viewQuery")
 public class ViewQueryImpl implements ViewQuery {
@@ -25,32 +28,32 @@ public class ViewQueryImpl implements ViewQuery {
 	}
 	
 	public String text(String lang,String text,Map<String, Object> params) {
-		ViewRequestConfig viewReqConfig = new ViewRequestConfig();
+		RequestConfig viewReqConfig = new RequestConfig();
 		viewReqConfig.setLanguage(lang);
 		return viewService.translateText(text, viewReqConfig, params);
 	}
 	
 	public String text(String lang,String text) {
-		ViewRequestConfig viewReqConfig = new ViewRequestConfig();
+		RequestConfig viewReqConfig = new RequestConfig();
 		viewReqConfig.setLanguage(lang);
 		return viewService.translateText(text, viewReqConfig, null);
 	}
 
 	public String i18n(String lang,String key,Map<String, Object> params,Map<String, Object> commonParams) {
-		ViewRequestConfig viewReqConfig = new ViewRequestConfig();
+		RequestConfig viewReqConfig = new RequestConfig();
 		viewReqConfig.setLanguage(lang);
-		viewReqConfig.setQueryParams(commonParams);
+		viewReqConfig.setParams(commonParams);
 		return viewService.translateKey(key, viewReqConfig, params);
 	}	
 	
 	public String i18n(String lang,String key,Map<String, Object> params) {
-		ViewRequestConfig viewReqConfig = new ViewRequestConfig();
+		RequestConfig viewReqConfig = new RequestConfig();
 		viewReqConfig.setLanguage(lang);
 		return viewService.translateKey(key, viewReqConfig, params);
 	}	
 
 	public String i18n(String lang,String key) {
-		ViewRequestConfig viewReqConfig = new ViewRequestConfig();
+		RequestConfig viewReqConfig = new RequestConfig();
 		viewReqConfig.setLanguage(lang);
 		return viewService.translateKey(key, viewReqConfig, null);
 	}
@@ -59,6 +62,18 @@ public class ViewQueryImpl implements ViewQuery {
 		ViewStatement viewStatement = new ViewStatementImpl(viewService);
 		viewStatement.setViewId(view);
 		return viewStatement;
+	}
+	
+	public <T> Integer insertViewTable(String view, T data) {
+		return viewService.insertViewTable(view,data);
+	}
+	
+	public <T> Integer updateViewTable(String view, T data) {
+		return viewService.updateViewTable(view,data);
+	}
+	
+	public <T> Integer deleteViewTable(String view, T data) {
+		return viewService.deleteViewTable(view,data);
 	}
 	
 	public ViewStatement prepareView(String view,
@@ -100,5 +115,7 @@ public class ViewQueryImpl implements ViewQuery {
 		statement.setSortField(sortField);
 		return statement;
 	}
+
+
 
 }

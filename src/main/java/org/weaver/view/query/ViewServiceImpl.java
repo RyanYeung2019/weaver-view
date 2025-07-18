@@ -26,10 +26,14 @@ import org.weaver.view.query.entity.QueryFilter;
 import org.weaver.view.query.entity.SortByField;
 import org.weaver.view.query.entity.TreeData;
 import org.weaver.view.query.entity.ViewData;
-import org.weaver.view.query.entity.ViewRequestConfig;
+import org.weaver.view.query.entity.RequestConfig;
 import org.weaver.view.query.mapper.BeanPropRowMapper;
 import org.weaver.view.query.mapper.CamelFieldMapper;
+import org.weaver.view.table.entity.FieldEn;
+import org.weaver.view.table.entity.PrimaryKeyEn;
+import org.weaver.view.table.entity.TableEn;
 import org.weaver.view.util.FormatterUtils;
+import org.weaver.view.util.Utils;
 
 import com.alibaba.fastjson.JSONObject;
 
@@ -47,17 +51,157 @@ public class ViewServiceImpl implements ViewService {
 	@Autowired
 	LangDefine langDefine;
 	
-	public String translateText(String text, ViewRequestConfig viewReqConfig, Map<String, Object> tranParamMap) {
-		for(String key:viewReqConfig.getQueryParams().keySet()) {
+	public <T> Integer insertTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
+		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		FieldEn autoIncEn = tableEn.getFieldEns().stream().filter(item->item.getAutoInc()).findFirst().orElse(null);
+		Integer result = 0;
+		if(data instanceof Map ) {
+			@SuppressWarnings("unchecked")
+			Map<String,Object> item = (Map<String, Object>)data;
+			StringBuffer fields = new StringBuffer();
+			StringBuffer values = new StringBuffer();
+			boolean first = true;
+			for(String field:item.keySet()) {
+				FieldEn vfield = tableEn.getFieldEnMap().get(field);
+				if(vfield!=null && item.get(field)!=null) {
+					Object value = SqlUtils.convertObjVal(vfield.getType(),item.get(field), requestConfig);
+					item.put(field, value);
+					if(!first) {
+						fields.append(",");
+						values.append(",");
+					}
+					first = false;
+					fields.append(vfield.getFieldDb());
+					values.append(":"+vfield.getFieldId());
+				}
+			}
+			String sql = "INSERT INTO "+tableName+"("+fields+")VALUES("+values+")";
+			result = queryDao.executeSql(dataSourceName, item, sql, autoIncEn); 
+		}else {
+			Map<String,Object> item = Utils.entityToMap(data);
+			result = insertTable(dataSourceName,tableName,item,requestConfig);
+			Utils.mapToEntity(item, data);
+		}
+		return result;
+	}
+
+	public <T> Integer insertViewTable(String view, T data) {
+		ViewEn viewEn = this.getViewInfo(view);
+		String tables = viewEn.getMeta().getString("tables");
+		if (tables==null)
+			throw new RuntimeException("meta.tables not defined in "+viewEn.getViewId());
+		String table = tables.split(",")[0].trim();
+		RequestConfig requestConfig = new RequestConfig();
+		return insertTable(viewEn.getDataSource(), table , data,  requestConfig);
+	}
+	
+	public <T> Integer updateTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
+		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
+		Integer result = 0;
+		if(data instanceof Map ) {
+			@SuppressWarnings("unchecked")
+			Map<String,Object> item = (Map<String, Object>)data;
+			StringBuffer upKeys = new StringBuffer();
+			StringBuffer upValues = new StringBuffer();
+			boolean fstKey = true;
+			boolean fstVal = true;
+			for(String field:item.keySet()) {
+				FieldEn vfield = tableEn.getFieldEnMap().get(field);
+				if(vfield!=null && item.get(field)!=null) {
+					Object value = SqlUtils.convertObjVal(vfield.getType(),item.get(field), requestConfig);
+					item.put(field, value);
+					if(keys.stream().anyMatch(e->e.getDbField().equals(vfield.getFieldDb()))) {
+						if(!fstKey) {
+							upKeys.append(" and ");
+						}
+						upKeys.append(vfield.getFieldDb() + "= :"+vfield.getFieldId() );
+						fstKey = false;
+					}else {
+						if(!fstVal) {
+							upValues.append(" , ");
+						}
+						upValues.append(vfield.getFieldDb() + "= :"+vfield.getFieldId() );
+						fstVal = false;
+					}
+				}
+			}
+			if(fstKey) throw new RuntimeException("key not found for table : "+tableName);
+			String sql = "update "+tableName+" set "+upValues+" where "+upKeys;
+			result = queryDao.executeSql(dataSourceName, item, sql, null); 
+		}else {
+			Map<String,Object> item = Utils.entityToMap(data);
+			result = updateTable(dataSourceName,tableName,item,requestConfig);
+			Utils.mapToEntity(item, data);
+		}
+		return result;		
+	}	
+	
+	public <T> Integer updateViewTable(String view, T data) {
+		ViewEn viewEn = this.getViewInfo(view);
+		String tables = viewEn.getMeta().getString("tables");
+		if (tables==null)
+			throw new RuntimeException("meta.tables not defined in "+viewEn.getViewId());
+		String table = tables.split(",")[0].trim();
+		RequestConfig requestConfig = new RequestConfig();
+		return updateTable(viewEn.getDataSource(),table,data,requestConfig);
+	}
+
+	public <T> Integer deleteTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
+		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
+		Integer result = 0;
+		if(data instanceof Map ) {
+			@SuppressWarnings("unchecked")
+			Map<String,Object> item = (Map<String, Object>)data;
+			StringBuffer delKeys = new StringBuffer();
+			boolean fstKey = true;
+			for(String field:item.keySet()) {
+				FieldEn vfield = tableEn.getFieldEnMap().get(field);
+				if(vfield!=null && item.get(field)!=null) {
+					Object value = SqlUtils.convertObjVal(vfield.getType(),item.get(field), requestConfig);
+					item.put(field, value);
+					if(keys.stream().anyMatch(e->e.getDbField().equals(vfield.getFieldDb()))) {
+						if(!fstKey) {
+							delKeys.append(" and ");
+						}
+						delKeys.append(vfield.getFieldDb() + "= :"+vfield.getFieldId() );
+						fstKey = false;
+					}
+				}
+			}
+			if(fstKey) throw new RuntimeException("key not found for table : "+tableName);
+			String sql = "delete from  "+tableName+" where "+delKeys;
+			result = queryDao.executeSql(dataSourceName, item, sql, null); 
+		}else {
+			Map<String,Object> item = Utils.entityToMap(data);
+			result = deleteTable(dataSourceName,tableName,item,requestConfig);
+			Utils.mapToEntity(item, data);
+		}
+		return result;
+	}
+	
+	public <T> Integer deleteViewTable(String view, T data) {
+		ViewEn viewEn = this.getViewInfo(view);
+		String tables = viewEn.getMeta().getString("tables");
+		if (tables==null)
+			throw new RuntimeException("meta.tables not defined in "+viewEn.getViewId());
+		String table = tables.split(",")[0].trim();
+		RequestConfig reqConfig = new RequestConfig();
+		return deleteTable(viewEn.getDataSource(),table,data,reqConfig);
+	}
+	
+	public String translateText(String text, RequestConfig viewReqConfig, Map<String, Object> tranParamMap) {
+		for(String key:viewReqConfig.getParams().keySet()) {
 			if(tranParamMap==null)tranParamMap = new HashMap<>();
-			tranParamMap.put(key, viewReqConfig.getQueryParams().get(key));
+			tranParamMap.put(key, viewReqConfig.getParams().get(key));
 		}
 		Translator translator = new Translator(queryDao, langDefine, viewDefine, viewReqConfig, tranParamMap);
 		return translator.tranText(text);
 	}
 	
-	public String translateKey(String text, ViewRequestConfig viewReqConfig, Map<String, Object> tranParamMap) {
-		Translator translator = new Translator(queryDao, langDefine, viewDefine, viewReqConfig, viewReqConfig.getQueryParams());
+	public String translateKey(String text, RequestConfig viewReqConfig, Map<String, Object> tranParamMap) {
+		Translator translator = new Translator(queryDao, langDefine, viewDefine, viewReqConfig, viewReqConfig.getParams());
 		return translator.tranKey(text,tranParamMap);
 	}
 
@@ -67,7 +211,7 @@ public class ViewServiceImpl implements ViewService {
 	
 	public <T> ViewData<T> query(ViewEn viewEn, Map<String, Object> params, SortByField[] sortField,
 			Integer pageNum, Integer pageSize, QueryFilter queryFilter,List<String> aggrList, RowMapper<T> rowMapper,
-			ViewRequestConfig viewReqConfig) {
+			RequestConfig viewReqConfig) {
 		Date startTime = new Date();
 		ViewData<T> data = new ViewData<>();
 		if(pageNum!=null && pageSize!=null) {
@@ -92,7 +236,7 @@ public class ViewServiceImpl implements ViewService {
 	
 	public <T> ViewData<T> queryViewData(ViewEn viewEn, Map<String, Object> params, SortByField[] sortField,
 			Integer pageNum, Integer pageSize, QueryFilter queryFilter, RowMapper<T> rowMapper,
-			ViewRequestConfig viewReqConfig) {
+			RequestConfig viewReqConfig) {
 		ViewData<T> viewData = new ViewData<>();
 		List<T> data = queryView(viewEn, params, sortField, pageNum, pageSize, queryFilter, rowMapper, viewReqConfig);
 		if(queryFilter!=null)viewData.setPrimarySearchValue(queryFilter.getPrimarySearchValue());
@@ -104,7 +248,7 @@ public class ViewServiceImpl implements ViewService {
 
 	public <T> List<T> queryView(ViewEn viewEn, Map<String, Object> params, SortByField[] sortField,
 			Integer pageNum, Integer pageSize, QueryFilter queryFilter, RowMapper<T> rowMapper,
-			ViewRequestConfig viewReqConfig) {
+			RequestConfig viewReqConfig) {
 		log.debug("queryView:"+viewEn.getViewId());
 		FilterCriteria filter = SqlUtils.paramFilter(queryFilter, viewEn.getListFields(), viewEn.getSourceType(),viewReqConfig);
 		if(filter!=null) queryFilter.setPrimarySearchValue(filter.getPrimarySearchValue());
@@ -127,14 +271,14 @@ public class ViewServiceImpl implements ViewService {
 	}
 
 	public LinkedHashMap<String, Object> queryViewAggregate(ViewEn viewEn, Map<String, Object> params, QueryFilter queryFilter,
-			List<String> aggrList, ViewRequestConfig viewReqConfig) {
+			List<String> aggrList, RequestConfig viewReqConfig) {
 		log.debug("queryViewAggregate:"+viewEn.getViewId());
 		FilterCriteria filter = SqlUtils.paramFilter(queryFilter, viewEn.getListFields(), viewEn.getSourceType(),viewReqConfig);
 		Map<String, Object> queryParams = combineParam(viewEn, params, viewReqConfig);
 		return queryDao.queryViewAggregate(viewEn, queryParams, filter, aggrList);
 	}
 
-	public <T> void updateViewInfo(ViewEn viewEn, ViewData<T> data, ViewRequestConfig viewReqConfig) {
+	public <T> void updateViewInfo(ViewEn viewEn, ViewData<T> data, RequestConfig viewReqConfig) {
 		String viewId = viewEn.getViewId();
 		List<ViewField> viewFields = viewEn.getListFields();
 		List<FieldInfo> fieldInfos = new ArrayList<>();
@@ -192,7 +336,7 @@ public class ViewServiceImpl implements ViewService {
 	}
 	
 	public <T> ViewData<TreeData<T>> queryTree(String viewId, Integer level, String parentValue, Map<String, Object> params,
-			SortByField[] sortField, String search, RowMapper<T> rowMapper, ViewRequestConfig viewReqConfig) {
+			SortByField[] sortField, String search, RowMapper<T> rowMapper, RequestConfig viewReqConfig) {
 		if (level == null)
 			level = Integer.MAX_VALUE;
 		ViewEn viewEn = viewDefine.getView(viewId);
@@ -214,7 +358,7 @@ public class ViewServiceImpl implements ViewService {
 	
 	
 	public <T> List<TreeData<T>> queryTree(ViewEn viewEn, String keyField, String parentField, Integer level, Integer currentLevel, String parentValue, Map<String, Object> params,
-			SortByField[] sortField,String search, RowMapper<T> rowMapper, ViewRequestConfig viewReqConfig){
+			SortByField[] sortField,String search, RowMapper<T> rowMapper, RequestConfig viewReqConfig){
 		currentLevel++;
 		List<TreeData<T>> result = new ArrayList<>();
 		if (currentLevel > level) return result;
@@ -262,7 +406,7 @@ public class ViewServiceImpl implements ViewService {
 	}
 	
 	public <T> ViewData<TreeData<T>> queryTreePath(String viewId, String keyValue, Map<String, Object> params,
-			RowMapper<T> rowMapper,ViewRequestConfig viewReqConfig) {
+			RowMapper<T> rowMapper,RequestConfig viewReqConfig) {
 		log.debug("queryTreePath:" + viewId);
 		if (keyValue == null)
 			throw new RuntimeException("Value is not allow null!");
@@ -297,7 +441,7 @@ public class ViewServiceImpl implements ViewService {
 		if(critParams!=null) {
 			for(String param:critParams.keySet()) {
 				Object value = critParams.get(param);
-				String type = FormatterUtils.convertFieldType(param, value.getClass().toString());
+				String type = convertFieldType(param, value.getClass().toString());
 				paramMap.put(param, type);
 			}
 		}
@@ -309,9 +453,36 @@ public class ViewServiceImpl implements ViewService {
 		viewDefine.putView(sql, viewEn);
 		return viewEn;
 	}
+	
+	private String convertFieldType(String name, String javaType) {
+		String fieldType = null;
+		if (javaType.equals("java.lang.String")) {
+			fieldType = ViewField.FIELDTYPE_STRING;
+		} else if (javaType.equals("java.lang.Boolean")) {
+			fieldType = ViewField.FIELDTYPE_BOOLEAN;
+		} else if (javaType.equals("java.sql.Date")||javaType.equals("java.time.LocalDate")) {
+			fieldType = ViewField.FIELDTYPE_DATE;
+		} else if (javaType.equals("java.sql.Time")||javaType.equals("java.time.LocalTime")) {
+			fieldType = ViewField.FIELDTYPE_TIME;
+		} else if (javaType.equals("java.sql.Timestamp")||javaType.equals("java.time.LocalDateTime")) {
+			fieldType = ViewField.FIELDTYPE_DATETIME;
+			String fieldName = name.toLowerCase();
+			if (fieldName.endsWith(ViewField.FIELDTYPE_TIME + "_only")) {
+				fieldType = ViewField.FIELDTYPE_TIME;
+			}
+			if (fieldName.endsWith(ViewField.FIELDTYPE_DATE + "_only")) {
+				fieldType = ViewField.FIELDTYPE_DATE;
+			}
+		} else
+			fieldType = ViewField.FIELDTYPE_NUMBER;
+		if (fieldType == null) {
+			throw new RuntimeException("Not recognize field:[" + name + "] type:[" + javaType + "]!");
+		}
+		return fieldType;
+	}	
 
 	private  <T> List<TreeData<T>> queryTreePath(ViewEn viewEn, String keyField, String parentField, String keyValue, Map<String, Object> params, RowMapper<T> rowMapper,
-			ViewRequestConfig viewReqConfig) {
+			RequestConfig viewReqConfig) {
 		QueryFilter queryFilter = new QueryFilter(new QueryCriteria(keyField, keyValue));
 		List<T> nodes = queryView(viewEn, params, null, 0, 2, queryFilter, rowMapper,
 				viewReqConfig);
@@ -348,11 +519,11 @@ public class ViewServiceImpl implements ViewService {
 	}
 
 	private Map<String, Object> combineParam(ViewEn viewEn, Map<String, Object> params,
-			ViewRequestConfig viewReqConfig) {
+			RequestConfig viewReqConfig) {
 		Map<String, Object> queryParams = new HashMap<>();
-		if (viewReqConfig.getQueryParams() != null) {
-			for (String key : viewReqConfig.getQueryParams().keySet()) {
-					queryParams.put(key, viewReqConfig.getQueryParams().get(key));
+		if (viewReqConfig.getParams() != null) {
+			for (String key : viewReqConfig.getParams().keySet()) {
+					queryParams.put(key, viewReqConfig.getParams().get(key));
 			}
 		}
 		if (viewEn.getParam() == null) return queryParams;
@@ -405,7 +576,7 @@ public class ViewServiceImpl implements ViewService {
 	}
 	
 
-	private <T> Map<String, Map<String, String>> getValueMapping(RowMapper<T> rowMapper, Map<String, Object> params,ViewRequestConfig viewReqConfig){
+	private <T> Map<String, Map<String, String>> getValueMapping(RowMapper<T> rowMapper, Map<String, Object> params,RequestConfig viewReqConfig){
 		Map<String, Map<String, Map<String, Object>>> enumFieldsValues = getEnumFieldsValues(rowMapper);
 		List<ViewField> fieldList = getFieldList(rowMapper);
 		Map<String, Map<String, String>> valueMapping = null;

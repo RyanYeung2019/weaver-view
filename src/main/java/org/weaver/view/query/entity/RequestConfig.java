@@ -6,13 +6,13 @@ import java.util.Map;
 
 import org.weaver.config.LangDefine;
 
-public class ViewRequestConfig {
+public class RequestConfig {
 
 	private String language = LangDefine.DEFAULT_LANG;
 	
 	private boolean translate = true;
 
-	private Map<String, Object> queryParams = new HashMap<>();
+	private Map<String, Object> params = new HashMap<>();
 	
 	private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 	
@@ -30,12 +30,12 @@ public class ViewRequestConfig {
 		}
 	}
 
-	public Map<String, Object> getQueryParams() {
-		return queryParams;
+	public Map<String, Object> getParams() {
+		return params;
 	}
 
-	public void setQueryParams(Map<String, Object> queryParams) {
-		this.queryParams = queryParams;
+	public void setParams(Map<String, Object> params) {
+		this.params = params;
 	}
 
 	public boolean isTranslate() {

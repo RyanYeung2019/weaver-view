@@ -3,6 +3,11 @@ package org.weaver.view.query.mapper;
 import java.lang.reflect.Field;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -56,6 +61,14 @@ public class BeanPropRowMapper<T> extends BeanPropertyRowMapper<T> {
 			if(value!=null) {
 				try {
 					beanField.setAccessible(true);
+					if(!value.getClass().toString().equals(beanField.getType().toString())) {
+						if(value instanceof LocalDateTime) {
+							value = Date.from(((LocalDateTime) value).atZone(ZoneId.systemDefault()).toInstant());
+						}
+						if(value instanceof LocalDate) {
+							value = Date.from(((LocalDate) value).atStartOfDay(ZoneId.systemDefault()).toInstant());
+						}
+					} 
 					beanField.set(item, value);
 				} catch (IllegalArgumentException | IllegalAccessException e) {
 					throw new RuntimeException(e);
