@@ -127,6 +127,32 @@ public class ViewQueryImpl implements ViewQuery {
 		return statement;
 	}
 	
+	public ViewStatement prepareTable(String tableName) {
+		ViewStatement statement = new ViewStatementImpl(viewService);
+		String sql = "select * from "+tableName;
+		statement.setSql(sql);
+		return statement;
+	} 
+	
+	public ViewStatement prepareTable(String tableName,
+			String[] sort,
+			Integer pageNum,
+			Integer pageSize,
+			String filter, 
+			String[] aggrs			
+			) {
+		SortByField[] sortField = ParamUtils.sortFieldConver(sort);
+		QueryFilter queryFilter = ParamUtils.filterConver(filter);
+		List<String> aggrList = ParamUtils.aggrConver(aggrs);
+		ViewStatement statement = prepareTable(tableName);
+		statement.setSortField(sortField);
+		statement.setPageNum(pageNum);
+		statement.setPageSize(pageSize);
+		statement.setQueryFilter(queryFilter);
+		statement.setAggrList(aggrList);
+		return statement;
+	} 	
+	
 	public ViewStatement prepareTree(String view) {
 		ViewStatement statement = new ViewStatementImpl(viewService);
 		statement.setViewId(view);

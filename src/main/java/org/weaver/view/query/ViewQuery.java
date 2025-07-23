@@ -26,6 +26,10 @@ public interface ViewQuery {
 	
 	public ViewStatement prepareSql(String sql) ;
 	
+	public ViewStatement prepareTable(String tableName) ;
+	
+	public ViewStatement prepareTable(String tableName, String[] sort, Integer pageNum, Integer pageSize, String filter,  String[] aggrs);
+	
 	public ViewStatement prepareTree(String view);
 	
 	public ViewStatement prepareTree(String view,String[] sort);

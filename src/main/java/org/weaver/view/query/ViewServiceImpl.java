@@ -465,7 +465,7 @@ public class ViewServiceImpl implements ViewService {
 		if(critParams!=null) {
 			for(String param:critParams.keySet()) {
 				Object value = critParams.get(param);
-				String type = convertFieldType(param, value.getClass().toString());
+				String type = convertFieldType(param, value.getClass().getName());
 				paramMap.put(param, type);
 			}
 		}
