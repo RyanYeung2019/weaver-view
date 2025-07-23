@@ -24,5 +24,7 @@ public interface ViewDao {
 
 	TableEn getTableInfo(String dataSourreBeanName,String table); 
 	
-	Integer executeSql(String dataSourceName, Map<String,Object> data, String sql,FieldEn autoIncrementField); 
+	Integer executeSql(String dataSourceName, Map<String,Object> data, String sql,FieldEn autoIncrementField);
+	
+	int[] executeSqlBatch(String dataSourceName, List<Map<String,Object>> data, String sql);
 }

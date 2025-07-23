@@ -51,6 +51,55 @@ public class ViewServiceImpl implements ViewService {
 	@Autowired
 	LangDefine langDefine;
 	
+	@SuppressWarnings("unchecked")
+	public <T> int[] insertTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig) {
+		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		List<Map<String,Object>> dataForInsert = new ArrayList<>();
+		int[] result = new int[] {}; 
+		for(T data:dataList) {
+			Map<String,Object> item ;
+			if(data instanceof Map )
+				item = (Map<String, Object>)data;				
+			else
+				item = Utils.entityToMap(data);
+			mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
+			dataForInsert.add(item);
+		}
+		if(dataForInsert.size()>0) {
+			Map<String,Object> item = dataForInsert.get(0);
+			StringBuffer fields = new StringBuffer();
+			StringBuffer values = new StringBuffer();
+			boolean first = true;
+			for(String field:item.keySet()) {
+				FieldEn feildEn = tableEn.getFieldEnMap().get(field);
+				if(feildEn!=null && item.get(field)!=null) {
+					Object value = SqlUtils.convertObjVal(feildEn.getType(),item.get(field), requestConfig);
+					item.put(field, value);
+					if(!first) {
+						fields.append(",");
+						values.append(",");
+					}
+					first = false;
+					fields.append(feildEn.getFieldDb());
+					values.append(":"+feildEn.getFieldId());
+				}
+			}
+			String sql = "INSERT INTO "+tableName+"("+fields+")VALUES("+values+")";		
+			result = queryDao.executeSqlBatch(dataSourceName,dataForInsert,sql);
+		}
+		return result;
+	}
+	
+	public <T> Integer updateTableBatch(String dataSourceName, String tableName, T data, RequestConfig requestConfig,String... keys) {
+		//TODO
+		return null;
+	}
+	
+	public <T> Integer deleteTableBatch(String dataSourceName, String tableName, T data, RequestConfig requestConfig,String... keys) {
+		//TODO
+		return null;
+	}
+	
 	public <T> Integer insertTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
 		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
 		FieldEn autoIncEn = tableEn.getFieldEns().stream().filter(item->item.getAutoInc()).findFirst().orElse(null);
@@ -58,21 +107,22 @@ public class ViewServiceImpl implements ViewService {
 		if(data instanceof Map ) {
 			@SuppressWarnings("unchecked")
 			Map<String,Object> item = (Map<String, Object>)data;
+			mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
 			StringBuffer fields = new StringBuffer();
 			StringBuffer values = new StringBuffer();
 			boolean first = true;
 			for(String field:item.keySet()) {
-				FieldEn vfield = tableEn.getFieldEnMap().get(field);
-				if(vfield!=null && item.get(field)!=null) {
-					Object value = SqlUtils.convertObjVal(vfield.getType(),item.get(field), requestConfig);
+				FieldEn feildEn = tableEn.getFieldEnMap().get(field);
+				if(feildEn!=null && item.get(field)!=null) {
+					Object value = SqlUtils.convertObjVal(feildEn.getType(),item.get(field), requestConfig);
 					item.put(field, value);
 					if(!first) {
 						fields.append(",");
 						values.append(",");
 					}
 					first = false;
-					fields.append(vfield.getFieldDb());
-					values.append(":"+vfield.getFieldId());
+					fields.append(feildEn.getFieldDb());
+					values.append(":"+feildEn.getFieldId());
 				}
 			}
 			String sql = "INSERT INTO "+tableName+"("+fields+")VALUES("+values+")";
@@ -83,16 +133,6 @@ public class ViewServiceImpl implements ViewService {
 			Utils.mapToEntity(item, data);
 		}
 		return result;
-	}
-
-	public <T> Integer insertViewTable(String view, T data) {
-		ViewEn viewEn = this.getViewInfo(view);
-		String tables = viewEn.getMeta().getString("tables");
-		if (tables==null)
-			throw new RuntimeException("meta.tables not defined in "+viewEn.getViewId());
-		String table = tables.split(",")[0].trim();
-		RequestConfig requestConfig = new RequestConfig();
-		return insertTable(viewEn.getDataSource(), table , data,  requestConfig);
 	}
 	
 	public <T> Integer updateTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
@@ -106,22 +146,23 @@ public class ViewServiceImpl implements ViewService {
 			StringBuffer upValues = new StringBuffer();
 			boolean fstKey = true;
 			boolean fstVal = true;
+			mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
 			for(String field:item.keySet()) {
-				FieldEn vfield = tableEn.getFieldEnMap().get(field);
-				if(vfield!=null && item.get(field)!=null) {
-					Object value = SqlUtils.convertObjVal(vfield.getType(),item.get(field), requestConfig);
+				FieldEn fieldEn = tableEn.getFieldEnMap().get(field);
+				if(fieldEn!=null && item.get(field)!=null) {
+					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig);
 					item.put(field, value);
-					if(keys.stream().anyMatch(e->e.getDbField().equals(vfield.getFieldDb()))) {
+					if(keys.stream().anyMatch(e->e.getDbField().equals(fieldEn.getFieldDb()))) {
 						if(!fstKey) {
 							upKeys.append(" and ");
 						}
-						upKeys.append(vfield.getFieldDb() + "= :"+vfield.getFieldId() );
+						upKeys.append(fieldEn.getFieldDb() + "= :"+fieldEn.getFieldId() );
 						fstKey = false;
 					}else {
 						if(!fstVal) {
 							upValues.append(" , ");
 						}
-						upValues.append(vfield.getFieldDb() + "= :"+vfield.getFieldId() );
+						upValues.append(fieldEn.getFieldDb() + "= :"+fieldEn.getFieldId() );
 						fstVal = false;
 					}
 				}
@@ -136,36 +177,27 @@ public class ViewServiceImpl implements ViewService {
 		}
 		return result;		
 	}	
-	
-	public <T> Integer updateViewTable(String view, T data) {
-		ViewEn viewEn = this.getViewInfo(view);
-		String tables = viewEn.getMeta().getString("tables");
-		if (tables==null)
-			throw new RuntimeException("meta.tables not defined in "+viewEn.getViewId());
-		String table = tables.split(",")[0].trim();
-		RequestConfig requestConfig = new RequestConfig();
-		return updateTable(viewEn.getDataSource(),table,data,requestConfig);
-	}
 
 	public <T> Integer deleteTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
 		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
 		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
 		Integer result = 0;
-		if(data instanceof Map ) {
+		if(data instanceof Map) {
 			@SuppressWarnings("unchecked")
 			Map<String,Object> item = (Map<String, Object>)data;
 			StringBuffer delKeys = new StringBuffer();
 			boolean fstKey = true;
+			mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
 			for(String field:item.keySet()) {
-				FieldEn vfield = tableEn.getFieldEnMap().get(field);
-				if(vfield!=null && item.get(field)!=null) {
-					Object value = SqlUtils.convertObjVal(vfield.getType(),item.get(field), requestConfig);
+				FieldEn fieldEn = tableEn.getFieldEnMap().get(field);
+				if(fieldEn!=null && item.get(field)!=null) {
+					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig);
 					item.put(field, value);
-					if(keys.stream().anyMatch(e->e.getDbField().equals(vfield.getFieldDb()))) {
+					if(keys.stream().anyMatch(e->e.getDbField().equals(fieldEn.getFieldDb()))) {
 						if(!fstKey) {
 							delKeys.append(" and ");
 						}
-						delKeys.append(vfield.getFieldDb() + "= :"+vfield.getFieldId() );
+						delKeys.append(fieldEn.getFieldDb() + "= :"+fieldEn.getFieldId() );
 						fstKey = false;
 					}
 				}
@@ -181,15 +213,7 @@ public class ViewServiceImpl implements ViewService {
 		return result;
 	}
 	
-	public <T> Integer deleteViewTable(String view, T data) {
-		ViewEn viewEn = this.getViewInfo(view);
-		String tables = viewEn.getMeta().getString("tables");
-		if (tables==null)
-			throw new RuntimeException("meta.tables not defined in "+viewEn.getViewId());
-		String table = tables.split(",")[0].trim();
-		RequestConfig reqConfig = new RequestConfig();
-		return deleteTable(viewEn.getDataSource(),table,data,reqConfig);
-	}
+
 	
 	public String translateText(String text, RequestConfig viewReqConfig, Map<String, Object> tranParamMap) {
 		for(String key:viewReqConfig.getParams().keySet()) {
@@ -655,4 +679,17 @@ public class ViewServiceImpl implements ViewService {
 		}
 		return valueMapping;
 	}
+	
+	private void mergeData(List<FieldEn> fieldEns,Map<String,Object> param,Map<String,Object> data){
+		for(FieldEn item:fieldEns) {
+			String fieldId = item.getFieldId();
+			Object dataValue = data.get(fieldId);
+			if(dataValue==null) {
+				Object paramValue = param.get(fieldId);
+				if(paramValue!=null) {
+					data.put(fieldId, paramValue);
+				}
+			}
+		}
+	}	
 }

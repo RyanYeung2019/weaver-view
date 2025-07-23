@@ -4,6 +4,8 @@ package org.weaver.view.query;
 
 import java.util.Map;
 
+import org.weaver.view.query.entity.RequestConfig;
+
 
 public interface ViewQuery {
 	public String getLang(String lang,String key) ;
@@ -28,9 +30,16 @@ public interface ViewQuery {
 	
 	public ViewStatement prepareTree(String view,String[] sort);
 	
-	public <T> Integer insertViewTable(String view, T data); 
+	public <T> Integer insertViewTable(String view, T data,RequestConfig requestConfig); 
 	
-	public <T> Integer updateViewTable(String view, T data);
+	public <T> Integer updateViewTable(String view, T data,RequestConfig requestConfig);
 	
-	public <T> Integer deleteViewTable(String view, T data); 
+	public <T> Integer deleteViewTable(String view, T data,RequestConfig requestConfig);
+	
+	public <T> Integer insertTable(String datasource, String table, T data, RequestConfig requestConfig);
+	
+	public <T> Integer updateTable(String datasource, String table, T data, RequestConfig requestConfig);
+	
+	public <T> Integer deleteTable(String datasource, String table, T data, RequestConfig requestConfig);
+	
 }

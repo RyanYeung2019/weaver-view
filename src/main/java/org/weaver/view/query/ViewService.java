@@ -13,11 +13,12 @@ import org.weaver.view.query.entity.ViewData;
 import org.weaver.view.query.entity.RequestConfig;
 
 interface ViewService {
-	<T> Integer insertViewTable(String view, T data);
 	
-	<T> Integer updateViewTable(String view, T data);
+	<T> Integer insertTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 	
-	<T> Integer deleteViewTable(String view, T data);
+	<T> Integer updateTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
+	
+	<T> Integer deleteTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 
 	String translateText(String text, RequestConfig viewReqConfig, Map<String, Object> tranParamMap);
 

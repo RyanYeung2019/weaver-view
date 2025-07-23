@@ -132,9 +132,41 @@ public class ViewDaoImpl implements ViewDao {
 		return listFields;
 	}
 	
+	
+	
+	
+	public int[] executeSqlBatch(String dataSourceName, List<Map<String,Object>> data, String sql) {
+		String dataSourreBeanName = dataSourceName;
+		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
+		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+		NamedParameterJdbcTemplate namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
+        return batchUpdateLargeData(namedParameterJdbcTemplate,sql,data);
+	}
+	
+	private int[] batchUpdateLargeData(NamedParameterJdbcTemplate namedParameterJdbcTemplate,String sql, List<Map<String, Object>> entityList) {
+		int batchSize = 500;
+		int[] result = null;
+	    for (int i = 0; i < entityList.size(); i += batchSize) {
+	        List<Map<String, Object>> subList = entityList.subList(i, Math.min(i + batchSize, entityList.size()));
+	        SqlParameterSource[] batchArgs = subList.stream()
+	            .map(MapSqlParameterSource::new)
+	            .toArray(SqlParameterSource[]::new);
+	        int[] rows = namedParameterJdbcTemplate.batchUpdate(sql, batchArgs);
+	        result=result==null?rows:mergeArrays(result,rows);
+	    }
+	    return result;
+	}
+	
+	private int[] mergeArrays(int[] arr1, int[] arr2) {
+	    int[] result = new int[arr1.length + arr2.length];
+	    System.arraycopy(arr1, 0, result, 0, arr1.length);
+	    System.arraycopy(arr2, 0, result, arr1.length, arr2.length);
+	    return result;
+	}	
+
 	public Integer executeSql(String dataSourceName, Map<String,Object> data, String sql,FieldEn autoIncrementField) {
 		String dataSourreBeanName = dataSourceName;
-		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName, DataSource.class);
+		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
 		NamedParameterJdbcTemplate namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
         SqlParameterSource parameterSource = new MapSqlParameterSource(data);
@@ -330,7 +362,7 @@ public class ViewDaoImpl implements ViewDao {
 		TableEn tableEn = new TableEn(table);
 		final Map<String,List<TableFK>> tableForeig = new HashMap<>();
 		tableForeig.put(tableEn.getTableId(), new ArrayList<>());
-		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName, DataSource.class);
+		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
     	try(Connection conn =  dataSource.getConnection();){
     		DatabaseMetaData dbMeta = conn.getMetaData();
     		String[] tableArray = table.split("[.]");

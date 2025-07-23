@@ -7,11 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.weaver.config.LangDefine;
 import org.weaver.config.entity.ViewEn;
-import org.weaver.config.entity.ViewField;
 import org.weaver.view.query.entity.QueryFilter;
 import org.weaver.view.query.entity.SortByField;
 import org.weaver.view.query.entity.RequestConfig;
-import org.weaver.view.table.entity.TableEn;
 
 @Component("viewQuery")
 public class ViewQueryImpl implements ViewQuery {
@@ -64,17 +62,44 @@ public class ViewQueryImpl implements ViewQuery {
 		return viewStatement;
 	}
 	
-	public <T> Integer insertViewTable(String view, T data) {
-		return viewService.insertViewTable(view,data);
+	public <T> Integer insertTable(String datasource, String table, T data, RequestConfig requestConfig) {
+		return viewService.insertTable(datasource,table,data,requestConfig);
 	}
 	
-	public <T> Integer updateViewTable(String view, T data) {
-		return viewService.updateViewTable(view,data);
+	public <T> Integer updateTable(String datasource, String table, T data, RequestConfig requestConfig) {
+		return viewService.updateTable(datasource,table,data,requestConfig);
 	}
 	
-	public <T> Integer deleteViewTable(String view, T data) {
-		return viewService.deleteViewTable(view,data);
+	public <T> Integer deleteTable(String datasource, String table, T data, RequestConfig requestConfig) {
+		return viewService.deleteTable(datasource,table,data,requestConfig);
 	}
+	
+	public <T> Integer insertViewTable(String view, T data,RequestConfig requestConfig) {
+		ViewEn viewEn = viewService.getViewInfo(view);
+		String tables = viewEn.getMeta().getString("tables");
+		if (tables==null)
+			throw new RuntimeException("meta.tables not defined in "+viewEn.getViewId());
+		String table = tables.split(",")[0].trim();
+		return viewService.insertTable(viewEn.getDataSource(), table , data,  requestConfig);
+	}
+	
+	public <T> Integer updateViewTable(String view, T data,RequestConfig requestConfig) {
+		ViewEn viewEn = viewService.getViewInfo(view);
+		String tables = viewEn.getMeta().getString("tables");
+		if (tables==null)
+			throw new RuntimeException("meta.tables not defined in "+viewEn.getViewId());
+		String table = tables.split(",")[0].trim();
+		return viewService.updateTable(viewEn.getDataSource(),table,data,requestConfig);
+	}	
+	
+	public <T> Integer deleteViewTable(String view, T data,RequestConfig requestConfig) {
+		ViewEn viewEn = viewService.getViewInfo(view);
+		String tables = viewEn.getMeta().getString("tables");
+		if (tables==null)
+			throw new RuntimeException("meta.tables not defined in "+viewEn.getViewId());
+		String table = tables.split(",")[0].trim();
+		return viewService.deleteTable(viewEn.getDataSource(),table,data,requestConfig);
+	}		
 	
 	public ViewStatement prepareView(String view,
 			String[] sort,
@@ -115,6 +140,8 @@ public class ViewQueryImpl implements ViewQuery {
 		statement.setSortField(sortField);
 		return statement;
 	}
+
+
 
 
 
