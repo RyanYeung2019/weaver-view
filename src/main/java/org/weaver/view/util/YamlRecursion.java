@@ -7,6 +7,12 @@ import java.util.Map;
 
 import org.yaml.snakeyaml.Yaml;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class YamlRecursion {
 
 	private Map<String, Object> ymlMap;

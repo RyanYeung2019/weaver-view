@@ -4,6 +4,11 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
 
 public class ForeignKeyEn implements Serializable {
 

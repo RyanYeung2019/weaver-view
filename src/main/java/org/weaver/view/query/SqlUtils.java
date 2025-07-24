@@ -6,7 +6,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
+import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +18,12 @@ import org.weaver.view.query.entity.RequestConfig;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
+
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
 
 class SqlUtils {
 
@@ -42,16 +47,9 @@ class SqlUtils {
 			QueryCriteria.OP_LARGER_THAN_OR_EQUAL, 
 			QueryCriteria.OP_IS_EMPTY };
 
-	private static char[] alphabet = { 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-			'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k',
-			'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' };
-
 	public static String varName() {
-		// Speed:1000IDs/second ~13 billion years needed, in order to have a 1%
-		// probability of at least one collision.
-		return NanoIdUtils.randomNanoId(new Random(), alphabet, 25);
+		return "A"+UUID.randomUUID().toString().replace("-", "");
 	}
-
 
 	public static FilterCriteria paramFilter(QueryFilter queryFilter, List<ViewField> viewFields, String dataSourceType,RequestConfig viewReqConfig) {
 		if(queryFilter==null)return null;

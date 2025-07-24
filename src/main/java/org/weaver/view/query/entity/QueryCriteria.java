@@ -3,6 +3,12 @@ package org.weaver.view.query.entity;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class QueryCriteria {
 	
 	public static String OP_EQUAL = "EQUAL";

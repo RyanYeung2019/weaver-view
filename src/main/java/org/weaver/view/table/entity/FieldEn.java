@@ -2,6 +2,11 @@ package org.weaver.view.table.entity;
 
 import java.io.Serializable;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
 
 public class FieldEn  implements Serializable {
 

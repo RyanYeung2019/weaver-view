@@ -1,11 +1,15 @@
 package org.weaver.view.query;
 
-
-
 import java.util.Map;
 
+import org.weaver.view.query.entity.KeyValueSettingEn;
 import org.weaver.view.query.entity.RequestConfig;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
 
 public interface ViewQuery {
 	public String getLang(String lang,String key) ;
@@ -46,4 +50,7 @@ public interface ViewQuery {
 	
 	public <T> Integer deleteTable(String datasource, String table, T data, RequestConfig requestConfig);
 	
+	public String getValue(KeyValueSettingEn setting,String key);
+	
+	public Integer setValue(KeyValueSettingEn setting,String key,String value);	
 }

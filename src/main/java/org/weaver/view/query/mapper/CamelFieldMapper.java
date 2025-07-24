@@ -9,6 +9,12 @@ import org.springframework.jdbc.core.RowMapper;
 import org.weaver.config.entity.ViewField;
 import org.weaver.view.query.Translator;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class CamelFieldMapper implements RowMapper<Map<String, Object>> {
 
 	private List<ViewField> fieldList;

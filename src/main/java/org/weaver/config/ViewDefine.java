@@ -30,6 +30,12 @@ import org.weaver.view.query.ViewQuery;
 import org.weaver.view.query.entity.EnumItemEn;
 import org.weaver.view.util.Utils;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 @Component("viewDefine")
 public class ViewDefine {
 
@@ -77,7 +83,12 @@ public class ViewDefine {
 			viewPath = defPath;
 		}
 		viewPath = Utils.toPath(viewPath);
-		Resource[] resources = resolver.getResources(viewPath + searchFile);
+		Resource[] resources =new Resource[] {};
+		try {
+			resources = resolver.getResources(viewPath + searchFile);
+		}catch(Exception e) {
+			log.warn(e.getMessage());
+		}
 		Yaml yaml = new Yaml();
 		List<String> nonDefinedParam = new ArrayList<>();
 		for (Resource file : resources) {

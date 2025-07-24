@@ -8,6 +8,12 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextRefreshedEvent;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 @Configuration
 @ComponentScan(basePackages = "org.weaver")
 public class LoadConfig implements ApplicationListener<ContextRefreshedEvent> {

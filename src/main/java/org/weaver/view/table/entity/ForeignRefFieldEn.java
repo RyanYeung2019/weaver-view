@@ -2,6 +2,12 @@ package org.weaver.view.table.entity;
 
 import java.io.Serializable;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class ForeignRefFieldEn  implements Serializable {
 
 	private static final long serialVersionUID = -7142265875163373676L;

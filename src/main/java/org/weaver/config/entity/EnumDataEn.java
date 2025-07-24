@@ -2,6 +2,12 @@ package org.weaver.config.entity;
 
 import java.util.LinkedHashMap;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class EnumDataEn {
 	LinkedHashMap<String, String> data;
 

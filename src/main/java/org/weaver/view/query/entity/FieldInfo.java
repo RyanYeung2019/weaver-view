@@ -6,6 +6,12 @@ import org.weaver.config.entity.EnumApiEn;
 
 import com.alibaba.fastjson.JSONObject;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class FieldInfo {
 	private String field;
 	private String name;

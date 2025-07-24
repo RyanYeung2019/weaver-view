@@ -10,6 +10,12 @@ import org.weaver.view.query.entity.QueryFilter;
 import org.weaver.view.query.entity.SortByField;
 import org.weaver.view.util.Utils;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 class ParamUtils {
 
 	static String stringDecoder(String value) {

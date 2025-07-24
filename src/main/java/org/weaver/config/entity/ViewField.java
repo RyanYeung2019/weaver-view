@@ -8,6 +8,12 @@ import com.alibaba.fastjson.JSONObject;
 
 import org.weaver.view.query.entity.EnumItemEn;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class ViewField {
 	
 	public static String FIELDTYPE_STRING = "string";

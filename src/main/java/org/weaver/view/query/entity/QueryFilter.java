@@ -6,6 +6,12 @@ import org.weaver.config.entity.ViewField;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class QueryFilter {
 	
 	public static final String TYPE_AND = "and";

@@ -7,6 +7,12 @@ import java.util.Map;
 
 import com.alibaba.fastjson.JSONObject;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class ViewData<T> {
 
 	public static final String AGGRS_SIZE = "size";

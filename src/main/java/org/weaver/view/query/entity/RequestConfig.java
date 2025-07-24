@@ -6,6 +6,12 @@ import java.util.Map;
 
 import org.weaver.config.LangDefine;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class RequestConfig {
 
 	private String language = LangDefine.DEFAULT_LANG;

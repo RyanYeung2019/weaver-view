@@ -2,6 +2,12 @@ package org.weaver.view.query.entity;
 
 import java.util.List;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class TreeData<T> {
 	
 	private T node;

@@ -22,6 +22,12 @@ import org.weaver.view.query.entity.RequestConfig;
 import org.weaver.view.query.mapper.CamelFieldMapper;
 import org.weaver.view.util.FormatterUtils;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class Translator {
 	private static final Logger log = LoggerFactory.getLogger(Translator.class);
 

@@ -19,6 +19,11 @@ import org.weaver.config.entity.EnumDataEn;
 import org.weaver.view.util.Utils;
 import org.weaver.view.util.YamlRecursion;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
 @Component("langDefine")
 public class LangDefine {
 
@@ -121,7 +126,12 @@ public class LangDefine {
 			}
 			langPath = defPath;
 		}
-		Resource[] resources = resolver.getResources(Utils.toPath(langPath) + searchFile);
+		Resource[] resources =new Resource[] {};
+		try {
+			resources = resolver.getResources(Utils.toPath(langPath) + searchFile);
+		}catch(Exception e) {
+			log.warn(e.getMessage());
+		}		
 		for (Resource file : resources) {
 			String name = file.getFilename();
 			if (!name.endsWith(".yml"))

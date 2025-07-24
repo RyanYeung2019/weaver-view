@@ -7,9 +7,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.weaver.config.LangDefine;
 import org.weaver.config.entity.ViewEn;
+import org.weaver.view.query.entity.KeyValueSettingEn;
 import org.weaver.view.query.entity.QueryFilter;
 import org.weaver.view.query.entity.SortByField;
 import org.weaver.view.query.entity.RequestConfig;
+
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
 
 @Component("viewQuery")
 public class ViewQueryImpl implements ViewQuery {
@@ -20,6 +27,13 @@ public class ViewQueryImpl implements ViewQuery {
 	@Autowired
 	private LangDefine langDefine;
 	
+	public String getValue(KeyValueSettingEn setting,String key) {
+		return viewService.getValue(setting, key);
+	}
+	
+	public Integer setValue(KeyValueSettingEn setting,String key,String value) {
+		return viewService.setValue(setting, key, value);
+	}	
 	
 	public String getLang(String lang,String key) {
 		return langDefine.getLang(lang,key);
@@ -106,7 +120,7 @@ public class ViewQueryImpl implements ViewQuery {
 			Integer pageNum,
 			Integer pageSize,
 			String filter, 
-			String[] aggrs			
+			String[] aggrs
 			) {
 		SortByField[] sortField = ParamUtils.sortFieldConver(sort);
 		QueryFilter queryFilter = ParamUtils.filterConver(filter);

@@ -14,6 +14,12 @@ import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.weaver.config.entity.ViewField;
 import org.weaver.view.query.Translator;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class BeanPropRowMapper<T> extends BeanPropertyRowMapper<T> {
 	
 	private List<ViewField> fieldList;

@@ -16,6 +16,12 @@ import org.weaver.view.query.entity.ViewData;
 import org.weaver.view.query.entity.RequestConfig;
 import org.weaver.view.query.mapper.CamelFieldMapper;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class ViewStatementImpl implements ViewStatement {
 
 	private ViewService viewService;

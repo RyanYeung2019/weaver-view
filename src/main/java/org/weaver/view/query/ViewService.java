@@ -6,11 +6,18 @@ import java.util.Map;
 
 import org.springframework.jdbc.core.RowMapper;
 import org.weaver.config.entity.ViewEn;
+import org.weaver.view.query.entity.KeyValueSettingEn;
 import org.weaver.view.query.entity.QueryFilter;
 import org.weaver.view.query.entity.SortByField;
 import org.weaver.view.query.entity.TreeData;
 import org.weaver.view.query.entity.ViewData;
 import org.weaver.view.query.entity.RequestConfig;
+
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
 
 interface ViewService {
 	
@@ -55,4 +62,8 @@ interface ViewService {
 
 	ViewEn getViewInfo(String dataSource, String sql, Map<String, Object> critParams);
 
+	String getValue(KeyValueSettingEn setting,String key);
+	
+	Integer setValue(KeyValueSettingEn setting,String key,String value);	
+	
 }

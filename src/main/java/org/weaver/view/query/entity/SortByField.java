@@ -1,5 +1,11 @@
 package org.weaver.view.query.entity;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class SortByField {
 
 	public static final String ASC = "ASC";

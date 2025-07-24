@@ -11,6 +11,12 @@ import org.weaver.config.entity.ViewField;
 import org.weaver.view.query.Translator;
 import org.weaver.view.util.FormatterUtils;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 class EnumFieldValueCollector {
 	private Map<String, Map<String, Map<String, Object>>> enumFieldsValues;
 	private Map<String, ViewField> fieldMap;

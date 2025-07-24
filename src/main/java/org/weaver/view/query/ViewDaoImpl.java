@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.ArgumentPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementSetter;
@@ -31,8 +32,10 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterUtils;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.weaver.config.entity.ViewEn;
 import org.weaver.config.entity.ViewField;
+import org.weaver.view.query.entity.KeyValueSettingEn;
 import org.weaver.view.query.entity.SortByField;
 import org.weaver.view.query.entity.ViewData;
 import org.weaver.view.table.entity.FieldEn;
@@ -45,6 +48,12 @@ import org.weaver.view.table.entity.TableEn;
 import org.weaver.view.table.entity.TableFK;
 import org.weaver.view.util.FormatterUtils;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 @Component("queryDao")
 public class ViewDaoImpl implements ViewDao {
 
@@ -53,6 +62,8 @@ public class ViewDaoImpl implements ViewDao {
 	private final static String AGGRTYPE_COUNT = "count";
 	private final static String AGGRTYPE_MAX = "max";
 	private final static String AGGRTYPE_MIN = "min";
+	
+	private final static String KEYVALUE_DEF ="defKeyValSet";
 
 	private static final Logger log = LoggerFactory.getLogger(ViewDao.class);
 
@@ -132,9 +143,6 @@ public class ViewDaoImpl implements ViewDao {
 		return listFields;
 	}
 	
-	
-	
-	
 	public int[] executeSqlBatch(String dataSourceName, List<Map<String,Object>> data, String sql) {
 		String dataSourreBeanName = dataSourceName;
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
@@ -164,6 +172,66 @@ public class ViewDaoImpl implements ViewDao {
 	    return result;
 	}	
 
+	public String getKeyValueTable(KeyValueSettingEn setting,String key){
+		String dataSourreBeanName = setting.getDataSourceName();
+		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
+		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+		String sql = null;
+ 		try {
+ 			if(StringUtils.isEmpty(setting.getTypeField())) {
+ 				sql = String.format("select %s from %s where %s = ? ", setting.getValueField(),setting.getTable(),setting.getKeyField()); 
+ 				return jdbcTemplate.queryForObject(sql,String.class,key);
+ 			}else {
+ 				sql = String.format("select %s from %s where %s = ? and %s = ?", setting.getValueField(),setting.getTable(),setting.getTypeField(),setting.getKeyField());
+ 				String typeValue = setting.getType();
+ 				return jdbcTemplate.queryForObject(sql,String.class,StringUtils.isEmpty(typeValue)?KEYVALUE_DEF :typeValue,key);
+ 			}
+	    } catch (EmptyResultDataAccessException e) {
+	    	return null;	
+	    }		 
+	}
+	
+	public Integer updateKeyValueTable(KeyValueSettingEn setting,String key,String value){
+		String dataSourreBeanName = setting.getDataSourceName();
+		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
+		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+		String sql = null;
+ 		try {
+ 			if(StringUtils.isEmpty(setting.getTypeField())) {
+ 				sql = String.format("update %s set %s=? where %s=?",setting.getTable(),setting.getValueField(),setting.getKeyField()); 
+ 				return jdbcTemplate.update(sql,key,value);
+ 			}else {
+ 				sql = String.format("update %s set %s=? where %s=? and %s=?",setting.getTable(),setting.getValueField(),setting.getTypeField(),setting.getKeyField());
+ 				String typeValue = setting.getType();
+ 				return jdbcTemplate.update(sql,StringUtils.isEmpty(typeValue)?KEYVALUE_DEF:typeValue,key,value);
+ 			}
+	    } catch (EmptyResultDataAccessException e) {
+	    	return 0;	
+	    }
+	}	
+	
+	public Integer insertKeyValueTable(KeyValueSettingEn setting,String key,String value){
+		String dataSourreBeanName = setting.getDataSourceName();
+		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
+		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+		String sql = null;
+ 		try {
+ 			if(StringUtils.isEmpty(setting.getTypeField())) {
+ 				sql = String.format("insert into %s(%s,%s)values (?,?)",setting.getTable(),setting.getKeyField(),setting.getValueField()); 
+ 				return jdbcTemplate.update(sql,key,value);
+ 			}else {
+ 				sql = String.format("insert into %s(%s,%s,%s) values (?,?,?)",setting.getTable(),setting.getTypeField(),setting.getKeyField(),setting.getValueField());
+ 				String typeValue = setting.getType();
+ 				return jdbcTemplate.update(sql,StringUtils.isEmpty(typeValue)?KEYVALUE_DEF:typeValue,key,value);
+ 			}
+	    } catch (EmptyResultDataAccessException e) {
+	    	return 0;	
+	    }
+	}
+	
+	
+	
+	
 	public Integer executeSql(String dataSourceName, Map<String,Object> data, String sql,FieldEn autoIncrementField) {
 		String dataSourreBeanName = dataSourceName;
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
@@ -224,8 +292,7 @@ public class ViewDaoImpl implements ViewDao {
 		NamedParameterJdbcTemplate nameParmJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
 
 		String defaultCountFieldName = SqlUtils.varName();
-		CountSqlParser countSqlParser = new CountSqlParser(defaultCountFieldName);
-		String sqlCount = countSqlParser.getSmartAgg(queryString, aggParam);
+		String sqlCount = getSimpleCountAggSql(defaultCountFieldName,queryString, aggParam);
 		log.debug("sqlCount:" + sqlCount);
 
 		long startTotal = (new Date()).getTime();
@@ -241,6 +308,32 @@ public class ViewDaoImpl implements ViewDao {
 		log.debug("totalTime:" + totalTime);
 		return result;
 	}
+	
+	private String getSimpleCountAggSql(String defaultCountFieldName, final String sql, List<String> aggregate) {
+		List<String> fields = new ArrayList<>();
+		for (String fieldAggr : aggregate) {
+			String[] fieldAggrArr = fieldAggr.split("-");
+			String field = fieldAggrArr[0];
+			String aggType = fieldAggrArr[1];
+			String fieldStr = String.format("%s(%s) AS %s", aggType, field,
+					field.equals("0") ? defaultCountFieldName : (field+"_"+aggType.toLowerCase()));
+			fields.add(fieldStr);
+		}
+		StringBuilder stringBuilder = new StringBuilder(sql.length() + 40);
+		stringBuilder.append("select ");
+		boolean isFirst = true;
+		for (String fieldStr : fields) {
+			if (!isFirst) {
+				stringBuilder.append(",");
+			}
+			stringBuilder.append(fieldStr);
+			isFirst = false;
+		}
+		stringBuilder.append(" from (");
+		stringBuilder.append(sql);
+		stringBuilder.append(") " + SqlUtils.varName());
+		return stringBuilder.toString();
+	}	
 
 	public <T> List<T> queryData(ViewEn viewEn, Map<String, Object> queryParams, SortByField[] sortField,
 			Integer pNum, Integer pSize, FilterCriteria filter, RowMapper<T> rowMapper) {

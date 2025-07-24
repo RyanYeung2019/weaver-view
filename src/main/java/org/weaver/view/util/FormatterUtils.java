@@ -3,6 +3,12 @@ package org.weaver.view.util;
 import java.util.Arrays;
 import org.weaver.config.entity.ViewField;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public class FormatterUtils {
 
 	public static String toCamelCase(String str) {

@@ -21,6 +21,7 @@ import org.weaver.config.entity.ViewEn;
 import org.weaver.config.entity.ViewField;
 import org.weaver.view.query.entity.EnumItemEn;
 import org.weaver.view.query.entity.FieldInfo;
+import org.weaver.view.query.entity.KeyValueSettingEn;
 import org.weaver.view.query.entity.QueryCriteria;
 import org.weaver.view.query.entity.QueryFilter;
 import org.weaver.view.query.entity.SortByField;
@@ -36,6 +37,12 @@ import org.weaver.view.util.FormatterUtils;
 import org.weaver.view.util.Utils;
 
 import com.alibaba.fastjson.JSONObject;
+
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
 
 @Component("viewService")
 public class ViewServiceImpl implements ViewService {
@@ -98,6 +105,20 @@ public class ViewServiceImpl implements ViewService {
 	public <T> Integer deleteTableBatch(String dataSourceName, String tableName, T data, RequestConfig requestConfig,String... keys) {
 		//TODO
 		return null;
+	}
+	
+	
+	public String getValue(KeyValueSettingEn setting,String key) {
+		return queryDao.getKeyValueTable(setting,key);
+	}
+	
+	public Integer setValue(KeyValueSettingEn setting,String key,String value) {
+		String oldVal = queryDao.getKeyValueTable(setting,key);
+		if(oldVal==null) {
+			return queryDao.insertKeyValueTable(setting, key, value);
+		}else {
+			return queryDao.updateKeyValueTable(setting, key, value);
+		}
 	}
 	
 	public <T> Integer insertTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {

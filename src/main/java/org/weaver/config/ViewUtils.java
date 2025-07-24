@@ -8,6 +8,12 @@ import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.util.Assert;
 import org.weaver.config.entity.ViewField;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 class ViewUtils {
 	/**
 	 * Set of characters that qualify as parameter separators, indicating that a

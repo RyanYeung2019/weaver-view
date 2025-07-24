@@ -10,6 +10,12 @@ import org.weaver.view.query.entity.TreeData;
 import org.weaver.view.query.entity.ViewData;
 import org.weaver.view.query.entity.RequestConfig;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public interface ViewStatement {
 	
 	void setSql(String sql);
