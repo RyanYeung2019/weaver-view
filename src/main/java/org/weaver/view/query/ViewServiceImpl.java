@@ -106,18 +106,40 @@ public class ViewServiceImpl implements ViewService {
 		//TODO
 		return null;
 	}
-	
-	
+
 	public String getValue(KeyValueSettingEn setting,String key) {
-		return queryDao.getKeyValueTable(setting,key);
+		Map<String,Object> result = queryDao.getKeyValueTable(setting,key);
+		if(result==null) return null;
+		Object value = result.get(setting.getValue());
+		if(value==null) return null;
+		return value.toString();
 	}
 	
 	public Integer setValue(KeyValueSettingEn setting,String key,String value) {
-		String oldVal = queryDao.getKeyValueTable(setting,key);
-		if(oldVal==null) {
-			return queryDao.insertKeyValueTable(setting, key, value);
+		LinkedHashMap<String,Object> data =  new LinkedHashMap<>();
+		data.put(setting.getValue(), value);
+		return setData(setting,key,data,null);
+	}
+	
+	public Integer setValue(KeyValueSettingEn setting,String key,String value,String userId) {
+		LinkedHashMap<String,Object> data =  new LinkedHashMap<>();
+		data.put(setting.getValue(), value);
+		return setData(setting,key,data,userId);
+	}	
+	
+	public Map<String,Object> getData(KeyValueSettingEn setting,String key) {
+		return queryDao.getKeyValueTable(setting,key);
+	}	
+	
+	public Integer setData(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data,String userId) {
+		if(getData(setting,key)==null) {
+			if(setting.getCreateUser()!=null && userId != null)data.put(setting.getCreateUser(), userId);
+			if(setting.getCreateDate()!=null)data.put(setting.getCreateDate(), new Date());
+			return queryDao.insertKeyValueTable(setting, key, data);
 		}else {
-			return queryDao.updateKeyValueTable(setting, key, value);
+			if(setting.getUpdateUser()!=null && userId != null)data.put(setting.getUpdateUser(), userId);
+			if(setting.getUpdateDate()!=null)data.put(setting.getUpdateDate(), new Date());
+			return queryDao.updateKeyValueTable(setting, key, data);
 		}
 	}
 	

@@ -1,5 +1,6 @@
 package org.weaver.view.query;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.weaver.view.query.entity.KeyValueSettingEn;
@@ -53,4 +54,16 @@ public interface ViewQuery {
 	public String getValue(KeyValueSettingEn setting,String key);
 	
 	public Integer setValue(KeyValueSettingEn setting,String key,String value);	
+	
+	public Integer setValue(KeyValueSettingEn setting,String key,String value,String userId);
+	
+	public Map<String,Object> getData(KeyValueSettingEn setting,String key);
+	
+	public Integer setData(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data,String userId);
+	
+	
+	
+	
+	
+	
 }

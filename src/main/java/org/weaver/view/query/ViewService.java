@@ -61,9 +61,30 @@ interface ViewService {
 	ViewEn getViewInfo(String viewId);
 
 	ViewEn getViewInfo(String dataSource, String sql, Map<String, Object> critParams);
-
+	
 	String getValue(KeyValueSettingEn setting,String key);
 	
-	Integer setValue(KeyValueSettingEn setting,String key,String value);	
+	Integer setValue(KeyValueSettingEn setting,String key,String value);
+	
+	Integer setValue(KeyValueSettingEn setting,String key,String value,String userId);
+	
+	Map<String,Object> getData(KeyValueSettingEn setting,String key);
+	
+	Integer setData(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data,String userId);
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 }

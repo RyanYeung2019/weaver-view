@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -14,6 +15,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -32,7 +34,6 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterUtils;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.weaver.config.entity.ViewEn;
 import org.weaver.config.entity.ViewField;
 import org.weaver.view.query.entity.KeyValueSettingEn;
@@ -62,9 +63,6 @@ public class ViewDaoImpl implements ViewDao {
 	private final static String AGGRTYPE_COUNT = "count";
 	private final static String AGGRTYPE_MAX = "max";
 	private final static String AGGRTYPE_MIN = "min";
-	
-	private final static String KEYVALUE_DEF ="defKeyValSet";
-
 	private static final Logger log = LoggerFactory.getLogger(ViewDao.class);
 
 	@Autowired
@@ -172,65 +170,81 @@ public class ViewDaoImpl implements ViewDao {
 	    return result;
 	}	
 
-	public String getKeyValueTable(KeyValueSettingEn setting,String key){
+	public Map<String,Object> getKeyValueTable(KeyValueSettingEn setting,String key){
 		String dataSourreBeanName = setting.getDataSourceName();
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-		String sql = null;
+		
+		if(setting.getTypeData()==null)setting.setTypeData(new LinkedHashMap<>());
+		setting.getTypeData().put(setting.getKey(), key);
+		
+		StringBuffer sql = new StringBuffer("select ");
+		sql.append("*");
+		sql.append(" from ");
+		sql.append(setting.getTable().replace("'","''"));
+		sql.append(" where ");
+		sql.append(setting.getTypeData().keySet().stream().map(s->s+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
+		
+		Object[] values = setting.getTypeData().values().stream().toArray(Object[]::new);
+		
  		try {
- 			if(StringUtils.isEmpty(setting.getTypeField())) {
- 				sql = String.format("select %s from %s where %s = ? ", setting.getValueField(),setting.getTable(),setting.getKeyField()); 
- 				return jdbcTemplate.queryForObject(sql,String.class,key);
- 			}else {
- 				sql = String.format("select %s from %s where %s = ? and %s = ?", setting.getValueField(),setting.getTable(),setting.getTypeField(),setting.getKeyField());
- 				String typeValue = setting.getType();
- 				return jdbcTemplate.queryForObject(sql,String.class,StringUtils.isEmpty(typeValue)?KEYVALUE_DEF :typeValue,key);
- 			}
+ 			return jdbcTemplate.queryForMap(sql.toString(), values);
 	    } catch (EmptyResultDataAccessException e) {
 	    	return null;	
 	    }		 
 	}
 	
-	public Integer updateKeyValueTable(KeyValueSettingEn setting,String key,String value){
+	public Integer updateKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data){
 		String dataSourreBeanName = setting.getDataSourceName();
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-		String sql = null;
+		
+		if(setting.getTypeData()==null)setting.setTypeData(new LinkedHashMap<>());
+		setting.getTypeData().put(setting.getKey(), key);
+
+		StringBuffer sql = new StringBuffer("update ");
+		sql.append(setting.getTable().replace("'","''"));
+		sql.append(" set ");
+		sql.append(data.keySet().stream().map(s->s+"=? ").collect(Collectors.joining(",")).replace("'","''"));
+		sql.append(" where ");
+		sql.append(setting.getTypeData().keySet().stream().map(s->s+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
+
+		List<Object> result = new ArrayList<>(data.values());
+		result.addAll(new ArrayList<>(setting.getTypeData().values()));
+
  		try {
- 			if(StringUtils.isEmpty(setting.getTypeField())) {
- 				sql = String.format("update %s set %s=? where %s=?",setting.getTable(),setting.getValueField(),setting.getKeyField()); 
- 				return jdbcTemplate.update(sql,key,value);
- 			}else {
- 				sql = String.format("update %s set %s=? where %s=? and %s=?",setting.getTable(),setting.getValueField(),setting.getTypeField(),setting.getKeyField());
- 				String typeValue = setting.getType();
- 				return jdbcTemplate.update(sql,StringUtils.isEmpty(typeValue)?KEYVALUE_DEF:typeValue,key,value);
- 			}
+ 			return jdbcTemplate.update(sql.toString(),result.stream().toArray(Object[]::new));
 	    } catch (EmptyResultDataAccessException e) {
 	    	return 0;	
 	    }
 	}	
 	
-	public Integer insertKeyValueTable(KeyValueSettingEn setting,String key,String value){
+	public Integer insertKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data){
 		String dataSourreBeanName = setting.getDataSourceName();
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-		String sql = null;
+		
+		if(setting.getTypeData()==null)setting.setTypeData(new LinkedHashMap<>());
+		setting.getTypeData().put(setting.getKey(), key);
+		
+		StringBuffer sql = new StringBuffer("insert into ");
+		sql.append(setting.getTable().replace("'","''"));
+		sql.append("(");
+		sql.append(String.join(",", setting.getTypeData().keySet()).replace("'","''")+",");
+		sql.append(String.join(",", data.keySet()).replace("'","''"));
+		sql.append(")values(");
+		sql.append(setting.getTypeData().keySet().stream().map(s->"?").collect(Collectors.joining(","))+",");
+		sql.append(data.keySet().stream().map(s->"?").collect(Collectors.joining(",")));
+		sql.append(")");
+		
+		List<Object> result = new ArrayList<>(setting.getTypeData().values());
+		result.addAll(new ArrayList<>(data.values()));
  		try {
- 			if(StringUtils.isEmpty(setting.getTypeField())) {
- 				sql = String.format("insert into %s(%s,%s)values (?,?)",setting.getTable(),setting.getKeyField(),setting.getValueField()); 
- 				return jdbcTemplate.update(sql,key,value);
- 			}else {
- 				sql = String.format("insert into %s(%s,%s,%s) values (?,?,?)",setting.getTable(),setting.getTypeField(),setting.getKeyField(),setting.getValueField());
- 				String typeValue = setting.getType();
- 				return jdbcTemplate.update(sql,StringUtils.isEmpty(typeValue)?KEYVALUE_DEF:typeValue,key,value);
- 			}
+ 			return jdbcTemplate.update(sql.toString(),result.stream().toArray(Object[]::new));
 	    } catch (EmptyResultDataAccessException e) {
 	    	return 0;	
 	    }
 	}
-	
-	
-	
 	
 	public Integer executeSql(String dataSourceName, Map<String,Object> data, String sql,FieldEn autoIncrementField) {
 		String dataSourreBeanName = dataSourceName;

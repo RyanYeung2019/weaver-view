@@ -35,7 +35,10 @@ public interface ViewDao {
 	
 	int[] executeSqlBatch(String dataSourceName, List<Map<String,Object>> data, String sql);
 	
-	String getKeyValueTable(KeyValueSettingEn setting,String key);
-	Integer updateKeyValueTable(KeyValueSettingEn setting,String key,String value);
-	Integer insertKeyValueTable(KeyValueSettingEn setting,String key,String value);
+	Map<String,Object> getKeyValueTable(KeyValueSettingEn setting,String key);
+	
+	Integer updateKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data);
+	
+	Integer insertKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data);
+	
 }

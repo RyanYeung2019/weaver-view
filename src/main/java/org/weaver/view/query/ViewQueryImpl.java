@@ -1,5 +1,6 @@
 package org.weaver.view.query;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +34,18 @@ public class ViewQueryImpl implements ViewQuery {
 	
 	public Integer setValue(KeyValueSettingEn setting,String key,String value) {
 		return viewService.setValue(setting, key, value);
+	}
+	
+	public Integer setValue(KeyValueSettingEn setting,String key,String value,String userId) {
+		return viewService.setValue(setting, key, value,userId);
+	}
+	
+	public Map<String,Object> getData(KeyValueSettingEn setting,String key){
+		return viewService.getData(setting, key);
+	}
+	
+	public Integer setData(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data,String userId) {
+		return viewService.setData(setting, key, data, userId);
 	}	
 	
 	public String getLang(String lang,String key) {
