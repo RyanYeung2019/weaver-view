@@ -2,9 +2,9 @@ package org.weaver.view.query;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-
 import org.weaver.view.query.entity.KeyValueSettingEn;
 import org.weaver.view.query.entity.RequestConfig;
+import com.alibaba.fastjson.JSONObject;
 
 /**
  *
@@ -39,11 +39,15 @@ public interface ViewQuery {
 	
 	public ViewStatement prepareTree(String view,String[] sort);
 	
+	public <T> JSONObject readViewTable(String view, T data,RequestConfig requestConfig); 
+
 	public <T> Integer insertViewTable(String view, T data,RequestConfig requestConfig); 
 	
 	public <T> Integer updateViewTable(String view, T data,RequestConfig requestConfig);
 	
 	public <T> Integer deleteViewTable(String view, T data,RequestConfig requestConfig);
+	
+	public <T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 	
 	public <T> Integer insertTable(String datasource, String table, T data, RequestConfig requestConfig);
 	

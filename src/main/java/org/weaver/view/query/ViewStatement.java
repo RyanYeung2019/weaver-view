@@ -21,6 +21,8 @@ public interface ViewStatement {
 	void setSql(String sql);
 
 	void setViewId(String viewId);
+	
+	void setTableId(String tableId);
 
 	void setDataSource(String dataSource);
 

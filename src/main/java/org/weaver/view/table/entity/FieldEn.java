@@ -1,6 +1,7 @@
 package org.weaver.view.table.entity;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  *
@@ -12,49 +13,59 @@ public class FieldEn  implements Serializable {
 
 	private static final long serialVersionUID = -3750851797529096851L;
 
-	private String fieldId;
-    private String fieldName;
-    private String fieldDb;
-    private String dataType;
-    private String type;
-    private String sqlType;
-    private Integer length;
-    private Integer deci;
-    private Boolean notNull;
-    private Boolean autoInc;
-    private String comment;
-    private Integer sortField;
+	private String field; // CamelCase Field Style
 
-	public FieldEn( String fieldId) {
-		super();
-		this.fieldId = fieldId;
-	}
+	private String fieldDb; // Database Field Style
 
-	public String getFieldId() {
-		return fieldId;
-	}
+	private Boolean nullable;
 
-	public void setFieldId(String fieldId) {
-		this.fieldId = fieldId;
-	}
+	private String type; // TypeScript Types
 
-	public String getFieldName() {
-		return fieldName;
-	}
+	private String typeDb;
 
-	public void setFieldName(String fieldName) {
-		this.fieldName = fieldName;
-	}
-
-	public String getDataType() {
-		return dataType;
-	}
-
-	public void setDataType(String dataType) {
-		this.dataType = dataType;
-	}
-
+	private String typeJava;
 	
+	private int sqlType;
+
+	private Integer preci;
+
+	private Integer scale;
+    
+    private Boolean autoInc;
+    
+    private String comment;
+    
+    private String defaultValue;
+
+	public FieldEn(String field) {
+		super();
+		this.field = field;
+	}
+
+	public String getField() {
+		return field;
+	}
+
+	public void setField(String field) {
+		this.field = field;
+	}
+
+	public String getFieldDb() {
+		return fieldDb;
+	}
+
+	public void setFieldDb(String fieldDb) {
+		this.fieldDb = fieldDb;
+	}
+
+	public Boolean getNullable() {
+		return nullable;
+	}
+
+	public void setNullable(Boolean nullable) {
+		this.nullable = nullable;
+	}
+
 	public String getType() {
 		return type;
 	}
@@ -63,36 +74,44 @@ public class FieldEn  implements Serializable {
 		this.type = type;
 	}
 
-	public String getSqlType() {
+	public String getTypeDb() {
+		return typeDb;
+	}
+
+	public void setTypeDb(String typeDb) {
+		this.typeDb = typeDb;
+	}
+
+	public String getTypeJava() {
+		return typeJava;
+	}
+
+	public void setTypeJava(String typeJava) {
+		this.typeJava = typeJava;
+	}
+
+	public int getSqlType() {
 		return sqlType;
 	}
 
-	public void setSqlType(String sqlType) {
+	public void setSqlType(int sqlType) {
 		this.sqlType = sqlType;
 	}
 
-	public Integer getLength() {
-		return length;
+	public Integer getPreci() {
+		return preci;
 	}
 
-	public void setLength(Integer length) {
-		this.length = length;
+	public void setPreci(Integer preci) {
+		this.preci = preci;
 	}
 
-	public Integer getDeci() {
-		return deci;
+	public Integer getScale() {
+		return scale;
 	}
 
-	public void setDeci(Integer deci) {
-		this.deci = deci;
-	}
-
-	public Boolean getNotNull() {
-		return notNull;
-	}
-
-	public void setNotNull(Boolean notNull) {
-		this.notNull = notNull;
+	public void setScale(Integer scale) {
+		this.scale = scale;
 	}
 
 	public Boolean getAutoInc() {
@@ -111,56 +130,38 @@ public class FieldEn  implements Serializable {
 		this.comment = comment;
 	}
 
-	public Integer getSortField() {
-		return sortField;
+
+	public String getDefaultValue() {
+		return defaultValue;
 	}
 
-	public void setSortField(Integer sortField) {
-		this.sortField = sortField;
-	}
-
-
-	public String getFieldDb() {
-		return fieldDb;
-	}
-
-	public void setFieldDb(String fieldDb) {
-		this.fieldDb = fieldDb;
-	}
-
-
-	@Override
-	public String toString() {
-		return "FieldEn [fieldId=" + fieldId + ", fieldName=" + fieldName + ", fieldDb=" + fieldDb + ", dataType="
-				+ dataType + ", type=" + type + ", sqlType=" + sqlType + ", length=" + length + ", deci=" + deci
-				+ ", notNull=" + notNull + ", autoInc=" + autoInc + ", comment=" + comment + ", sortField=" + sortField
-				+ "]";
+	public void setDefaultValue(String defaultValue) {
+		this.defaultValue = defaultValue;
 	}
 
 	@Override
 	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + ((fieldId == null) ? 0 : fieldId.hashCode());
-		return result;
+		return Objects.hash(field);
 	}
 
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
 			return true;
-		if ((obj == null) || (getClass() != obj.getClass()))
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
 			return false;
 		FieldEn other = (FieldEn) obj;
-		if (fieldId == null) {
-			if (other.fieldId != null)
-				return false;
-		} else if (!fieldId.equals(other.fieldId))
-			return false;
-		return true;
+		return Objects.equals(field, other.field);
 	}
 
-
-
+	@Override
+	public String toString() {
+		return "FieldEn [field=" + field + ", fieldDb=" + fieldDb + ", nullable=" + nullable + ", type=" + type
+				+ ", typeDb=" + typeDb + ", typeJava=" + typeJava + ", sqlType=" + sqlType + ", preci=" + preci
+				+ ", scale=" + scale + ", autoInc=" + autoInc + ", comment=" + comment + ", defaultValue="
+				+ defaultValue + "]";
+	}
 
 }

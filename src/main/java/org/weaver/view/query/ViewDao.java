@@ -37,6 +37,8 @@ public interface ViewDao {
 	
 	Map<String,Object> getKeyValueTable(KeyValueSettingEn setting,String key);
 	
+	Map<String,Object> readData(String dataSourreBeanName,Object[] values,String sql);
+	
 	Integer updateKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data);
 	
 	Integer insertKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data);

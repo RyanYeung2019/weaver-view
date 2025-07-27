@@ -11,6 +11,7 @@ import org.weaver.config.entity.ViewEn;
 import org.weaver.view.query.entity.KeyValueSettingEn;
 import org.weaver.view.query.entity.QueryFilter;
 import org.weaver.view.query.entity.SortByField;
+import com.alibaba.fastjson.JSONObject;
 import org.weaver.view.query.entity.RequestConfig;
 
 /**
@@ -88,6 +89,10 @@ public class ViewQueryImpl implements ViewQuery {
 		viewStatement.setViewId(view);
 		return viewStatement;
 	}
+
+	public <T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
+		return viewService.readTable(dataSourceName,tableName,data,requestConfig);
+	}
 	
 	public <T> Integer insertTable(String datasource, String table, T data, RequestConfig requestConfig) {
 		return viewService.insertTable(datasource,table,data,requestConfig);
@@ -99,6 +104,15 @@ public class ViewQueryImpl implements ViewQuery {
 	
 	public <T> Integer deleteTable(String datasource, String table, T data, RequestConfig requestConfig) {
 		return viewService.deleteTable(datasource,table,data,requestConfig);
+	}
+
+	public <T> JSONObject readViewTable(String view, T data,RequestConfig requestConfig) {
+		ViewEn viewEn = viewService.getViewInfo(view);
+		String tables = viewEn.getMeta().getString("tables");
+		if (tables==null)
+			throw new RuntimeException("meta.tables not defined in "+viewEn.getViewId());
+		String table = tables.split(",")[0].trim();
+		return viewService.readTable(viewEn.getDataSource(), table , data,  requestConfig);
 	}
 	
 	public <T> Integer insertViewTable(String view, T data,RequestConfig requestConfig) {
@@ -158,6 +172,7 @@ public class ViewQueryImpl implements ViewQuery {
 		ViewStatement statement = new ViewStatementImpl(viewService);
 		String sql = "select * from "+tableName;
 		statement.setSql(sql);
+		statement.setTableId(tableName);
 		return statement;
 	} 
 	
@@ -193,9 +208,5 @@ public class ViewQueryImpl implements ViewQuery {
 		statement.setSortField(sortField);
 		return statement;
 	}
-
-
-
-
 
 }

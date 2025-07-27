@@ -88,7 +88,7 @@ public class ViewServiceImpl implements ViewService {
 					}
 					first = false;
 					fields.append(feildEn.getFieldDb());
-					values.append(":"+feildEn.getFieldId());
+					values.append(":"+feildEn.getField());
 				}
 			}
 			String sql = "INSERT INTO "+tableName+"("+fields+")VALUES("+values+")";		
@@ -143,11 +143,58 @@ public class ViewServiceImpl implements ViewService {
 		}
 	}
 	
+	public <T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
+		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
+		if(data instanceof LinkedHashMap) {
+			@SuppressWarnings("unchecked")
+			LinkedHashMap<String,Object> item = (LinkedHashMap<String, Object>)data;
+			List<Object> values = new ArrayList<>();
+			StringBuffer whereKey = new StringBuffer();
+			boolean firstKey = true;
+			mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
+			for(String field:item.keySet()) {
+				FieldEn fieldEn = tableEn.getFieldEnMap().get(field);
+				if(fieldEn!=null && item.get(field)!=null) {
+					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig);
+					item.put(field, value);
+					if(keys.stream().anyMatch(e->e.getDbField().equals(fieldEn.getFieldDb()))) {
+						if(!firstKey) {
+							whereKey.append(" and ");
+						}
+						whereKey.append(fieldEn.getFieldDb() + "=? ");
+						values.add(item.get(field));
+						firstKey = false;
+					}
+				}
+			}
+			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
+			String sql = "select * from "+tableName+" where "+whereKey;
+			Map<String,Object> readData = queryDao.readData(dataSourceName,values.toArray(Object[]::new), sql);
+			if(readData!=null) {
+				for(FieldEn fieldEn:tableEn.getFieldEns()) {
+					Object val = readData.get(fieldEn.getFieldDb());
+					item.put(fieldEn.getField(), val);
+				}
+			}
+			JSONObject result = new JSONObject();
+			result.put("name", tableEn.getTableId());
+			result.put("remark", tableEn.getRemark());
+			result.put("fields", tableEn.getFieldEns());
+			return result;
+		}else {
+			Map<String,Object> item = Utils.entityToMap(data);
+			JSONObject result = readTable(dataSourceName,tableName,item,requestConfig);
+			Utils.mapToEntity(item, data);
+			return result;
+		}
+	}
+	
 	public <T> Integer insertTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
 		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
 		FieldEn autoIncEn = tableEn.getFieldEns().stream().filter(item->item.getAutoInc()).findFirst().orElse(null);
 		Integer result = 0;
-		if(data instanceof Map ) {
+		if(data instanceof Map) {
 			@SuppressWarnings("unchecked")
 			Map<String,Object> item = (Map<String, Object>)data;
 			mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
@@ -165,7 +212,7 @@ public class ViewServiceImpl implements ViewService {
 					}
 					first = false;
 					fields.append(feildEn.getFieldDb());
-					values.append(":"+feildEn.getFieldId());
+					values.append(":"+feildEn.getField());
 				}
 			}
 			String sql = "INSERT INTO "+tableName+"("+fields+")VALUES("+values+")";
@@ -187,8 +234,8 @@ public class ViewServiceImpl implements ViewService {
 			Map<String,Object> item = (Map<String, Object>)data;
 			StringBuffer upKeys = new StringBuffer();
 			StringBuffer upValues = new StringBuffer();
-			boolean fstKey = true;
-			boolean fstVal = true;
+			boolean firstKey = true;
+			boolean firstVal = true;
 			mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
 			for(String field:item.keySet()) {
 				FieldEn fieldEn = tableEn.getFieldEnMap().get(field);
@@ -196,21 +243,21 @@ public class ViewServiceImpl implements ViewService {
 					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig);
 					item.put(field, value);
 					if(keys.stream().anyMatch(e->e.getDbField().equals(fieldEn.getFieldDb()))) {
-						if(!fstKey) {
+						if(!firstKey) {
 							upKeys.append(" and ");
 						}
-						upKeys.append(fieldEn.getFieldDb() + "= :"+fieldEn.getFieldId() );
-						fstKey = false;
+						upKeys.append(fieldEn.getFieldDb() + "= :"+fieldEn.getField() );
+						firstKey = false;
 					}else {
-						if(!fstVal) {
+						if(!firstVal) {
 							upValues.append(" , ");
 						}
-						upValues.append(fieldEn.getFieldDb() + "= :"+fieldEn.getFieldId() );
-						fstVal = false;
+						upValues.append(fieldEn.getFieldDb() + "= :"+fieldEn.getField() );
+						firstVal = false;
 					}
 				}
 			}
-			if(fstKey) throw new RuntimeException("key not found for table : "+tableName);
+			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
 			String sql = "update "+tableName+" set "+upValues+" where "+upKeys;
 			result = queryDao.executeSql(dataSourceName, item, sql, null); 
 		}else {
@@ -240,7 +287,7 @@ public class ViewServiceImpl implements ViewService {
 						if(!fstKey) {
 							delKeys.append(" and ");
 						}
-						delKeys.append(fieldEn.getFieldDb() + "= :"+fieldEn.getFieldId() );
+						delKeys.append(fieldEn.getFieldDb() + "= :"+fieldEn.getField() );
 						fstKey = false;
 					}
 				}
@@ -725,7 +772,7 @@ public class ViewServiceImpl implements ViewService {
 	
 	private void mergeData(List<FieldEn> fieldEns,Map<String,Object> param,Map<String,Object> data){
 		for(FieldEn item:fieldEns) {
-			String fieldId = item.getFieldId();
+			String fieldId = item.getField();
 			Object dataValue = data.get(fieldId);
 			if(dataValue==null) {
 				Object paramValue = param.get(fieldId);

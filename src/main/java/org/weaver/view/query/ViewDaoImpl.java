@@ -7,7 +7,6 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -15,6 +14,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
@@ -34,6 +34,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterUtils;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.weaver.config.entity.ViewEn;
 import org.weaver.config.entity.ViewField;
 import org.weaver.view.query.entity.KeyValueSettingEn;
@@ -63,6 +64,9 @@ public class ViewDaoImpl implements ViewDao {
 	private final static String AGGRTYPE_COUNT = "count";
 	private final static String AGGRTYPE_MAX = "max";
 	private final static String AGGRTYPE_MIN = "min";
+	
+	private final Map<String, TableEn> cacheTableMap = new ConcurrentHashMap<>();
+	
 	private static final Logger log = LoggerFactory.getLogger(ViewDao.class);
 
 	@Autowired
@@ -79,68 +83,6 @@ public class ViewDaoImpl implements ViewDao {
 		}
 	}
 
-	
-	public ViewEn getViewInfo(String dataSource, String sql,Map<String, Object> critParams) {
-		ViewEn viewEn = new ViewEn();
-		List<ViewField> listFields = listFieldType(dataSource, sql, critParams);
-		viewEn.setListFields(listFields);
-		viewEn.setDataSource(dataSource);
-		String sourceType = getDataType(dataSource);
-		viewEn.setSourceType(sourceType);
-		return viewEn;
-	}
-	
-	private List<ViewField> listFieldType(String dataSourceName, String queryStr,
-			Map<String, Object> critParams) {
-		List<ViewField> listFields = new ArrayList<>();
-		try {
-			Object[] params = NamedParameterUtils.buildValueArray(queryStr, critParams);
-			String sql = NamedParameterUtils.parseSqlStatementIntoString(queryStr);
-			DataSource dataSource = this.applicationContext.getBean(dataSourceName, DataSource.class);
-			try (Connection conn = dataSource.getConnection(); PreparedStatement psIns = conn.prepareStatement(sql)) {
-				PreparedStatementSetter pss = new ArgumentPreparedStatementSetter(params);
-				pss.setValues(psIns);
-				List<String> checkExistsField = new ArrayList<>();
-				try (ResultSet rSet = psIns.executeQuery()) {
-					ResultSetMetaData rem = rSet.getMetaData();
-					for (int i = 1; i <= rem.getColumnCount(); i++) {
-						String name = rem.getColumnName(i);
-						if (checkExistsField.contains(name)) {
-							throw new RuntimeException(queryStr + " has duplicate fields!");
-						}
-						checkExistsField.add(name);
-						int sqlType = rem.getColumnType(i);
-						String type = rem.getColumnClassName(i);
-						Integer precision = rem.getPrecision(i);
-						Integer scale = rem.getScale(i);
-						String typeDb = rem.getColumnTypeName(i);
-						int nullable = rem.isNullable(i);
-						String fieldName = FormatterUtils.toCamelCase(name);
-						ViewField viewField = new ViewField(fieldName);
-						viewField.setFieldDb(name);
-						viewField.setSqlType(sqlType);
-						viewField.setType(FormatterUtils.convertSqlType(name, sqlType));
-						viewField.setTypeDb(typeDb);
-						viewField.setTypeJava(type);
-						
-						viewField.setPreci(precision);
-						viewField.setScale(scale);
-						if (nullable == ResultSetMetaData.columnNoNulls) {
-							viewField.setNullable(false);
-						}
-						if (nullable == ResultSetMetaData.columnNullable) {
-							viewField.setNullable(true);
-						}
-						listFields.add(viewField);
-					}
-				}
-			}
-		} catch (SQLException e) {
-			throw new RuntimeException(e);
-		}
-		return listFields;
-	}
-	
 	public int[] executeSqlBatch(String dataSourceName, List<Map<String,Object>> data, String sql) {
 		String dataSourreBeanName = dataSourceName;
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
@@ -172,26 +114,30 @@ public class ViewDaoImpl implements ViewDao {
 
 	public Map<String,Object> getKeyValueTable(KeyValueSettingEn setting,String key){
 		String dataSourreBeanName = setting.getDataSourceName();
-		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
-		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-		
 		if(setting.getTypeData()==null)setting.setTypeData(new LinkedHashMap<>());
 		setting.getTypeData().put(setting.getKey(), key);
-		
 		StringBuffer sql = new StringBuffer("select ");
 		sql.append("*");
 		sql.append(" from ");
 		sql.append(setting.getTable().replace("'","''"));
 		sql.append(" where ");
 		sql.append(setting.getTypeData().keySet().stream().map(s->s+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
-		
 		Object[] values = setting.getTypeData().values().stream().toArray(Object[]::new);
-		
  		try {
- 			return jdbcTemplate.queryForMap(sql.toString(), values);
+ 			return readData(dataSourreBeanName,values,sql.toString());
 	    } catch (EmptyResultDataAccessException e) {
 	    	return null;	
-	    }		 
+	    }
+	}
+	
+	public Map<String,Object> readData(String dataSourreBeanName,Object[] values,String sql){
+		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
+		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+ 		try {
+ 			return jdbcTemplate.queryForMap(sql, values);
+	    } catch (EmptyResultDataAccessException e) {
+	    	return null;	
+	    }
 	}
 	
 	public Integer updateKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data){
@@ -254,11 +200,11 @@ public class ViewDaoImpl implements ViewDao {
         SqlParameterSource parameterSource = new MapSqlParameterSource(data);
         Integer result=0;
         if(autoIncrementField!=null) {
-        	String aiField = autoIncrementField.getFieldId();
+        	String aiField = autoIncrementField.getField();
             KeyHolder keyHolder = new GeneratedKeyHolder();
             result = namedParameterJdbcTemplate.update(sql, parameterSource, keyHolder, new String[]{aiField} );
             Number keys = keyHolder.getKey();
-           	data.put(aiField, keys.longValue());            	
+           	data.put(autoIncrementField.getField(), keys.longValue());            	
         }else {
         	result = namedParameterJdbcTemplate.update(sql, parameterSource);
         }
@@ -464,9 +410,22 @@ public class ViewDaoImpl implements ViewDao {
 		return type;
 	}
 
-	//TODO cached
+	public ViewEn getViewInfo(String dataSource, String sql,Map<String, Object> critParams) {
+		ViewEn viewEn = new ViewEn();
+		List<ViewField> listFields = listFieldType(dataSource, sql, critParams);
+		viewEn.setListFields(listFields);
+		viewEn.setDataSource(dataSource);
+		String sourceType = getDataType(dataSource);
+		viewEn.setSourceType(sourceType);
+		return viewEn;
+	}
+	
 	public TableEn getTableInfo(String dataSourreBeanName,String table) {
-		TableEn tableEn = new TableEn(table);
+		String dsName = dataSourreBeanName==null?"dataSource":dataSourreBeanName;
+		String cacheKey = dsName+"|"+table;
+		TableEn tableEn = this.cacheTableMap.get(cacheKey);
+		if(tableEn!=null) return tableEn;
+		tableEn = new TableEn(table);
 		final Map<String,List<TableFK>> tableForeig = new HashMap<>();
 		tableForeig.put(tableEn.getTableId(), new ArrayList<>());
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
@@ -581,36 +540,96 @@ public class ViewDaoImpl implements ViewDao {
                 	List<FieldEn> fieldEns = new ArrayList<>();
                 	Map<String,FieldEn> fieldEnMap = tableEn.getFieldEnMap();
                     while(columns.next()){
+                    	
                         String colName = columns.getString("COLUMN_NAME");
                         String fieldLabel = columns.getString("REMARKS");
                         String isAutoIncrement = columns.getString("IS_AUTOINCREMENT");
+                        String typeDb = columns.getString("TYPE_NAME");
+						Integer precision = columns.getInt("COLUMN_SIZE");
+						Integer scale = columns.getInt("DECIMAL_DIGITS");
+						String isNullable = columns.getString("IS_NULLABLE");
+						String defaultValue = columns.getString("COLUMN_DEF");
                         int sqlType = columns.getInt("DATA_TYPE");
-                        if(fieldLabel!=null && fieldLabel.trim().equals("")){
-                            fieldLabel = null;
-                        }
                         String fieldId = FormatterUtils.toCamelCase(colName);
                         
                         FieldEn genDataFieldEn = new FieldEn(fieldId);
-                        
                         genDataFieldEn.setType(FormatterUtils.convertSqlType(colName, sqlType));
-                        genDataFieldEn.setFieldName(fieldLabel);
+                        genDataFieldEn.setComment(StringUtils.hasText(fieldLabel)?fieldLabel:null);
                         genDataFieldEn.setFieldDb(colName);
                         genDataFieldEn.setAutoInc("YES".equals(isAutoIncrement));
+						genDataFieldEn.setNullable("YES".equals(isNullable));
+                        genDataFieldEn.setSqlType(sqlType);
+                        genDataFieldEn.setType(FormatterUtils.convertSqlType(colName, sqlType));
+                        genDataFieldEn.setTypeDb(typeDb);
+                        //genDataFieldEn.setTypeJava(type);
+                        genDataFieldEn.setPreci(precision);
+						genDataFieldEn.setScale(scale);
+						genDataFieldEn.setDefaultValue(defaultValue);
+                        
                         fieldEns.add(genDataFieldEn);
                         fieldEnMap.put(fieldId, genDataFieldEn);
                     }
                     tableEn.setFieldEns(fieldEns);
                     tableEn.setFieldEnMap(fieldEnMap);
                 }                
-                
             }
     	}catch(SQLException e) {
 			throw new RuntimeException(e);
 		}
+    	this.cacheTableMap.put(cacheKey,tableEn);
     	return tableEn;
 	}	
 	
-	
+	private List<ViewField> listFieldType(String dataSourceName, String queryStr,
+			Map<String, Object> critParams) {
+		List<ViewField> listFields = new ArrayList<>();
+		try {
+			Object[] params = NamedParameterUtils.buildValueArray(queryStr, critParams);
+			String sql = NamedParameterUtils.parseSqlStatementIntoString(queryStr);
+			DataSource dataSource = this.applicationContext.getBean(dataSourceName, DataSource.class);
+			try (Connection conn = dataSource.getConnection(); PreparedStatement psIns = conn.prepareStatement(sql)) {
+				PreparedStatementSetter pss = new ArgumentPreparedStatementSetter(params);
+				pss.setValues(psIns);
+				List<String> checkExistsField = new ArrayList<>();
+				try (ResultSet rSet = psIns.executeQuery()) {
+					ResultSetMetaData rem = rSet.getMetaData();
+					for (int i = 1; i <= rem.getColumnCount(); i++) {
+						String name = rem.getColumnName(i);
+						if (checkExistsField.contains(name)) {
+							throw new RuntimeException(queryStr + " has duplicate fields!");
+						}
+						checkExistsField.add(name);
+						int sqlType = rem.getColumnType(i);
+						String type = rem.getColumnClassName(i);
+						Integer precision = rem.getPrecision(i);
+						Integer scale = rem.getScale(i);
+						String typeDb = rem.getColumnTypeName(i);
+						int nullable = rem.isNullable(i);
+						String fieldName = FormatterUtils.toCamelCase(name);
+						ViewField viewField = new ViewField(fieldName);
+						viewField.setFieldDb(name);
+						viewField.setSqlType(sqlType);
+						viewField.setType(FormatterUtils.convertSqlType(name, sqlType));
+						viewField.setTypeDb(typeDb);
+						viewField.setTypeJava(type);
+						
+						viewField.setPreci(precision);
+						viewField.setScale(scale);
+						if (nullable == ResultSetMetaData.columnNoNulls) {
+							viewField.setNullable(false);
+						}
+						if (nullable == ResultSetMetaData.columnNullable) {
+							viewField.setNullable(true);
+						}
+						listFields.add(viewField);
+					}
+				}
+			}
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
+		return listFields;
+	}	
 	
 	
 }

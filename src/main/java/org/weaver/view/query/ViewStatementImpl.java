@@ -26,6 +26,7 @@ public class ViewStatementImpl implements ViewStatement {
 
 	private ViewService viewService;
 	private String viewId;
+	private String tableId;
 	private Map<String, Object> params;
 	private SortByField[] sortField;
 
@@ -54,6 +55,10 @@ public class ViewStatementImpl implements ViewStatement {
 
 	public void setViewId(String viewId) {
 		this.viewId = viewId;
+	}
+
+	public void setTableId(String tableId) {
+		this.tableId = tableId;
 	}
 
 	public void setDataSource(String dataSource) {
@@ -131,8 +136,13 @@ public class ViewStatementImpl implements ViewStatement {
 			if (viewEn == null) {
 				viewEn = viewService.getViewInfo(this.dataSource, sql, params);
 			}
-			return viewService.query(viewEn, params, sortField, pageNum, pageSize, queryFilter, aggrList, rowMapper,
-					viewReqConfig);
+			ViewData<T> result = viewService.query(viewEn, params, sortField, pageNum, pageSize, queryFilter, aggrList, rowMapper,viewReqConfig);
+			if(this.tableId!=null) {
+				//TODO get table info, language setting
+				result.setName(this.tableId);
+				result.setDesc(this.tableId);
+			}
+			return result;
 		}
 	}
 

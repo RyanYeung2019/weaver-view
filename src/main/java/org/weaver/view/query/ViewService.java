@@ -11,6 +11,7 @@ import org.weaver.view.query.entity.QueryFilter;
 import org.weaver.view.query.entity.SortByField;
 import org.weaver.view.query.entity.TreeData;
 import org.weaver.view.query.entity.ViewData;
+import com.alibaba.fastjson.JSONObject;
 import org.weaver.view.query.entity.RequestConfig;
 
 /**
@@ -20,6 +21,8 @@ import org.weaver.view.query.entity.RequestConfig;
  */
 
 interface ViewService {
+	
+	<T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 	
 	<T> Integer insertTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 	
