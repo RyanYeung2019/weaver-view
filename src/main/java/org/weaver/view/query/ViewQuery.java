@@ -1,6 +1,7 @@
 package org.weaver.view.query;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.weaver.view.query.entity.KeyValueSettingEn;
 import org.weaver.view.query.entity.RequestConfig;
@@ -41,29 +42,37 @@ public interface ViewQuery {
 	
 	public <T> JSONObject readViewTable(String view, T data,RequestConfig requestConfig); 
 
-	public <T> Integer insertViewTable(String view, T data,RequestConfig requestConfig); 
+	public <T> int insertViewTable(String view, T data,RequestConfig requestConfig); 
 	
-	public <T> Integer updateViewTable(String view, T data,RequestConfig requestConfig);
+	public <T> int updateViewTable(String view, T data,RequestConfig requestConfig);
 	
-	public <T> Integer deleteViewTable(String view, T data,RequestConfig requestConfig);
+	public <T> int deleteViewTable(String view, T data,RequestConfig requestConfig);
 	
 	public <T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 	
-	public <T> Integer insertTable(String datasource, String table, T data, RequestConfig requestConfig);
+	public <T> int insertTable(String datasource, String table, T data, RequestConfig requestConfig);
 	
-	public <T> Integer updateTable(String datasource, String table, T data, RequestConfig requestConfig);
+	public <T> int updateTable(String datasource, String table, T data, RequestConfig requestConfig);
 	
-	public <T> Integer deleteTable(String datasource, String table, T data, RequestConfig requestConfig);
+	public <T> int deleteTable(String datasource, String table, T data, RequestConfig requestConfig);
+	
+	public <T> List<T> listTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig, String... whereFields);
+	
+	public <T> int[] insertTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig);
+	
+	public <T> int updateTableBatch(String dataSourceName, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields);
+	
+	public <T> int deleteTableBatch(String dataSourceName, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields);	
 	
 	public String getValue(KeyValueSettingEn setting,String key);
 	
-	public Integer setValue(KeyValueSettingEn setting,String key,String value);	
+	public int setValue(KeyValueSettingEn setting,String key,String value);	
 	
-	public Integer setValue(KeyValueSettingEn setting,String key,String value,String userId);
+	public int setValue(KeyValueSettingEn setting,String key,String value,String userId);
 	
 	public Map<String,Object> getData(KeyValueSettingEn setting,String key);
 	
-	public Integer setData(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data,String userId);
+	public int setData(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data,String userId);
 	
 	
 	

@@ -1,6 +1,7 @@
 package org.weaver.view.query;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -58,19 +59,136 @@ public class ViewServiceImpl implements ViewService {
 	@Autowired
 	LangDefine langDefine;
 	
+
+	public String getValue(KeyValueSettingEn setting,String key) {
+		Map<String,Object> result = queryDao.getKeyValueTable(setting,key);
+		if(result==null) return null;
+		Object value = result.get(setting.getValue());
+		if(value==null) return null;
+		return value.toString();
+	}
+	
+	public int setValue(KeyValueSettingEn setting,String key,String value) {
+		LinkedHashMap<String,Object> data =  new LinkedHashMap<>();
+		data.put(setting.getValue(), value);
+		return setData(setting,key,data,null);
+	}
+	
+	public int setValue(KeyValueSettingEn setting,String key,String value,String userId) {
+		LinkedHashMap<String,Object> data =  new LinkedHashMap<>();
+		data.put(setting.getValue(), value);
+		return setData(setting,key,data,userId);
+	}	
+	
+	public Map<String,Object> getData(KeyValueSettingEn setting,String key) {
+		return queryDao.getKeyValueTable(setting,key);
+	}	
+	
+	public int setData(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data,String userId) {
+		if(getData(setting,key)==null) {
+			if(setting.getCreateUser()!=null && userId != null)data.put(setting.getCreateUser(), userId);
+			if(setting.getCreateDate()!=null)data.put(setting.getCreateDate(), new Date());
+			return queryDao.insertKeyValueTable(setting, key, data);
+		}else {
+			if(setting.getUpdateUser()!=null && userId != null)data.put(setting.getUpdateUser(), userId);
+			if(setting.getUpdateDate()!=null)data.put(setting.getUpdateDate(), new Date());
+			return queryDao.updateKeyValueTable(setting, key, data);
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	public <T> List<T> listTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig, String... whereFields) {
+		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
+		if(data instanceof LinkedHashMap) {
+			LinkedHashMap<String,Object> item = (LinkedHashMap<String, Object>)data;
+			List<Object> values = new ArrayList<>();
+			StringBuffer whereKey = new StringBuffer();
+			boolean firstKey = true;
+			mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
+			for(String field:item.keySet()) {
+				FieldEn fieldEn = tableEn.getFieldEnMap().get(field);
+				if(fieldEn!=null && item.get(field)!=null) {
+					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig);
+					item.put(field, value);
+					if(keys.stream().anyMatch(e->e.getDbField().equals(fieldEn.getFieldDb()))) {
+						if(!firstKey) {
+							whereKey.append(" and ");
+						}
+						whereKey.append(fieldEn.getFieldDb() + "=? ");
+						values.add(item.get(field));
+						firstKey = false;
+					}
+				}
+			}
+			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
+			String sql = "select * from "+tableName+" where "+whereKey;
+			return(List<T>) queryDao.listData(dataSourceName,values.toArray(Object[]::new), sql);
+		}else {
+			Map<String,Object> item = Utils.entityToMap(data);
+			List<Map<String,Object>> datas = listTable(dataSourceName,tableName,item,requestConfig,whereFields);
+			List<T> result = new ArrayList<>();
+			for(Map<String,Object> _data:datas) {
+				try {
+					T val = (T) data.getClass().getDeclaredConstructor().newInstance();
+					Utils.mapToEntity(_data, val);
+					result.add(val);
+				} catch (Exception e) {
+					throw new RuntimeException(e.getMessage());
+				}
+			}
+			return result;
+		}
+	}
+	
+	public <T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
+		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
+		String[] keyFields = keys.stream()
+                .map(PrimaryKeyEn::getDbField)
+                .toArray(String[]::new);
+		if(data instanceof LinkedHashMap) {
+			@SuppressWarnings("unchecked")
+			LinkedHashMap<String,Object> item = (LinkedHashMap<String, Object>)data;
+			List<T> listData = listTable(dataSourceName,tableName,data,requestConfig,keyFields);
+			if(listData.size()>1)throw new RuntimeException("Return more than one record!");
+			if(listData.size()>0) {
+				T listItem = listData.get(0);
+				@SuppressWarnings("unchecked")
+				Map<String,Object> dataItem = (Map<String, Object>)listItem;
+				for(FieldEn fieldEn:tableEn.getFieldEns()) {
+					Object val = dataItem.get(fieldEn.getFieldDb());
+					item.put(fieldEn.getField(), val);
+				}				
+			}
+			JSONObject result = new JSONObject();
+			result.put("name", tableEn.getTableId());
+			result.put("remark", tableEn.getRemark());
+			result.put("fields", tableEn.getFieldEns());
+			return result;			
+		}else {
+			Map<String,Object> item = Utils.entityToMap(data);
+			JSONObject result = readTable(dataSourceName,tableName,item,requestConfig);
+			Utils.mapToEntity(item, data);
+			return result;
+		}
+	}
+	
 	@SuppressWarnings("unchecked")
 	public <T> int[] insertTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig) {
 		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
 		List<Map<String,Object>> dataForInsert = new ArrayList<>();
 		int[] result = new int[] {}; 
-		for(T data:dataList) {
-			Map<String,Object> item ;
-			if(data instanceof Map )
-				item = (Map<String, Object>)data;				
-			else
-				item = Utils.entityToMap(data);
-			mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
-			dataForInsert.add(item);
+		if(requestConfig.getParams()!=null && requestConfig.getParams().size()>0) {
+			for(T data:dataList) {
+				Map<String,Object> item ;
+				if(data instanceof Map )
+					item = (Map<String, Object>)data;				
+				else
+					item = Utils.entityToMap(data);
+				mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
+				dataForInsert.add(item);
+			}
 		}
 		if(dataForInsert.size()>0) {
 			Map<String,Object> item = dataForInsert.get(0);
@@ -97,100 +215,7 @@ public class ViewServiceImpl implements ViewService {
 		return result;
 	}
 	
-	public <T> Integer updateTableBatch(String dataSourceName, String tableName, T data, RequestConfig requestConfig,String... keys) {
-		//TODO
-		return null;
-	}
-	
-	public <T> Integer deleteTableBatch(String dataSourceName, String tableName, T data, RequestConfig requestConfig,String... keys) {
-		//TODO
-		return null;
-	}
-
-	public String getValue(KeyValueSettingEn setting,String key) {
-		Map<String,Object> result = queryDao.getKeyValueTable(setting,key);
-		if(result==null) return null;
-		Object value = result.get(setting.getValue());
-		if(value==null) return null;
-		return value.toString();
-	}
-	
-	public Integer setValue(KeyValueSettingEn setting,String key,String value) {
-		LinkedHashMap<String,Object> data =  new LinkedHashMap<>();
-		data.put(setting.getValue(), value);
-		return setData(setting,key,data,null);
-	}
-	
-	public Integer setValue(KeyValueSettingEn setting,String key,String value,String userId) {
-		LinkedHashMap<String,Object> data =  new LinkedHashMap<>();
-		data.put(setting.getValue(), value);
-		return setData(setting,key,data,userId);
-	}	
-	
-	public Map<String,Object> getData(KeyValueSettingEn setting,String key) {
-		return queryDao.getKeyValueTable(setting,key);
-	}	
-	
-	public Integer setData(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data,String userId) {
-		if(getData(setting,key)==null) {
-			if(setting.getCreateUser()!=null && userId != null)data.put(setting.getCreateUser(), userId);
-			if(setting.getCreateDate()!=null)data.put(setting.getCreateDate(), new Date());
-			return queryDao.insertKeyValueTable(setting, key, data);
-		}else {
-			if(setting.getUpdateUser()!=null && userId != null)data.put(setting.getUpdateUser(), userId);
-			if(setting.getUpdateDate()!=null)data.put(setting.getUpdateDate(), new Date());
-			return queryDao.updateKeyValueTable(setting, key, data);
-		}
-	}
-	
-	public <T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
-		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
-		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
-		if(data instanceof LinkedHashMap) {
-			@SuppressWarnings("unchecked")
-			LinkedHashMap<String,Object> item = (LinkedHashMap<String, Object>)data;
-			List<Object> values = new ArrayList<>();
-			StringBuffer whereKey = new StringBuffer();
-			boolean firstKey = true;
-			mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
-			for(String field:item.keySet()) {
-				FieldEn fieldEn = tableEn.getFieldEnMap().get(field);
-				if(fieldEn!=null && item.get(field)!=null) {
-					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig);
-					item.put(field, value);
-					if(keys.stream().anyMatch(e->e.getDbField().equals(fieldEn.getFieldDb()))) {
-						if(!firstKey) {
-							whereKey.append(" and ");
-						}
-						whereKey.append(fieldEn.getFieldDb() + "=? ");
-						values.add(item.get(field));
-						firstKey = false;
-					}
-				}
-			}
-			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
-			String sql = "select * from "+tableName+" where "+whereKey;
-			Map<String,Object> readData = queryDao.readData(dataSourceName,values.toArray(Object[]::new), sql);
-			if(readData!=null) {
-				for(FieldEn fieldEn:tableEn.getFieldEns()) {
-					Object val = readData.get(fieldEn.getFieldDb());
-					item.put(fieldEn.getField(), val);
-				}
-			}
-			JSONObject result = new JSONObject();
-			result.put("name", tableEn.getTableId());
-			result.put("remark", tableEn.getRemark());
-			result.put("fields", tableEn.getFieldEns());
-			return result;
-		}else {
-			Map<String,Object> item = Utils.entityToMap(data);
-			JSONObject result = readTable(dataSourceName,tableName,item,requestConfig);
-			Utils.mapToEntity(item, data);
-			return result;
-		}
-	}
-	
-	public <T> Integer insertTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
+	public <T> int insertTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
 		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
 		FieldEn autoIncEn = tableEn.getFieldEns().stream().filter(item->item.getAutoInc()).findFirst().orElse(null);
 		Integer result = 0;
@@ -216,7 +241,7 @@ public class ViewServiceImpl implements ViewService {
 				}
 			}
 			String sql = "INSERT INTO "+tableName+"("+fields+")VALUES("+values+")";
-			result = queryDao.executeSql(dataSourceName, item, sql, autoIncEn); 
+			result = queryDao.executeInsert(dataSourceName, item, sql, autoIncEn); 
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
 			result = insertTable(dataSourceName,tableName,item,requestConfig);
@@ -225,9 +250,8 @@ public class ViewServiceImpl implements ViewService {
 		return result;
 	}
 	
-	public <T> Integer updateTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
+	public <T> int updateTableBatch(String dataSourceName, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields) {
 		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
-		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
 		Integer result = 0;
 		if(data instanceof Map ) {
 			@SuppressWarnings("unchecked")
@@ -242,7 +266,7 @@ public class ViewServiceImpl implements ViewService {
 				if(fieldEn!=null && item.get(field)!=null) {
 					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig);
 					item.put(field, value);
-					if(keys.stream().anyMatch(e->e.getDbField().equals(fieldEn.getFieldDb()))) {
+					if(Arrays.stream(whereFields).anyMatch(fieldEn.getFieldDb()::equals)) {
 						if(!firstKey) {
 							upKeys.append(" and ");
 						}
@@ -259,18 +283,27 @@ public class ViewServiceImpl implements ViewService {
 			}
 			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
 			String sql = "update "+tableName+" set "+upValues+" where "+upKeys;
-			result = queryDao.executeSql(dataSourceName, item, sql, null); 
+			String checkSql = "select count(*) from "+tableName+" where "+upKeys;
+			result = queryDao.executeUpdate(dataSourceName, item, sql, checkSql,assertMaxRecordAffected); 
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
-			result = updateTable(dataSourceName,tableName,item,requestConfig);
+			result = updateTableBatch(dataSourceName,tableName,item,assertMaxRecordAffected,requestConfig,whereFields);
 			Utils.mapToEntity(item, data);
 		}
 		return result;		
-	}	
-
-	public <T> Integer deleteTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
+	}
+	
+	public <T> int updateTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
 		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
 		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
+		String[] keyFields = keys.stream()
+                .map(PrimaryKeyEn::getDbField)
+                .toArray(String[]::new);
+		return updateTableBatch(dataSourceName,tableName,data,1l,requestConfig,keyFields);
+	}	
+
+	public <T> int deleteTableBatch(String dataSourceName, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields) {
+		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
 		Integer result = 0;
 		if(data instanceof Map) {
 			@SuppressWarnings("unchecked")
@@ -283,7 +316,7 @@ public class ViewServiceImpl implements ViewService {
 				if(fieldEn!=null && item.get(field)!=null) {
 					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig);
 					item.put(field, value);
-					if(keys.stream().anyMatch(e->e.getDbField().equals(fieldEn.getFieldDb()))) {
+					if(Arrays.stream(whereFields).anyMatch(fieldEn.getFieldDb()::equals)) {
 						if(!fstKey) {
 							delKeys.append(" and ");
 						}
@@ -294,16 +327,24 @@ public class ViewServiceImpl implements ViewService {
 			}
 			if(fstKey) throw new RuntimeException("key not found for table : "+tableName);
 			String sql = "delete from  "+tableName+" where "+delKeys;
-			result = queryDao.executeSql(dataSourceName, item, sql, null); 
+			String checkSql = "select count(*) from "+tableName+" where "+delKeys;
+			result = queryDao.executeUpdate(dataSourceName, item, sql, checkSql,assertMaxRecordAffected); 
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
-			result = deleteTable(dataSourceName,tableName,item,requestConfig);
+			result = deleteTableBatch(dataSourceName,tableName,item,assertMaxRecordAffected,requestConfig,whereFields);
 			Utils.mapToEntity(item, data);
 		}
 		return result;
 	}
 	
-
+	public <T> int deleteTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
+		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
+		String[] keyFields = keys.stream()
+                .map(PrimaryKeyEn::getDbField)
+                .toArray(String[]::new);
+		return deleteTableBatch(dataSourceName,tableName,data,1l,requestConfig,keyFields);		
+	}
 	
 	public String translateText(String text, RequestConfig viewReqConfig, Map<String, Object> tranParamMap) {
 		for(String key:viewReqConfig.getParams().keySet()) {
@@ -771,6 +812,7 @@ public class ViewServiceImpl implements ViewService {
 	}
 	
 	private void mergeData(List<FieldEn> fieldEns,Map<String,Object> param,Map<String,Object> data){
+		if(param==null || param.size()==0 ) return; 
 		for(FieldEn item:fieldEns) {
 			String fieldId = item.getField();
 			Object dataValue = data.get(fieldId);

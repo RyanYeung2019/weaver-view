@@ -24,12 +24,21 @@ interface ViewService {
 	
 	<T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 	
-	<T> Integer insertTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
+	<T> int insertTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 	
-	<T> Integer updateTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
+	<T> int updateTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 	
-	<T> Integer deleteTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
+	<T> int deleteTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 
+	<T> List<T> listTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig, String... whereFields);
+	
+	<T> int[] insertTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig);
+	
+	<T> int updateTableBatch(String dataSourceName, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields);
+	
+	<T> int deleteTableBatch(String dataSourceName, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields);	
+	
+	
 	String translateText(String text, RequestConfig viewReqConfig, Map<String, Object> tranParamMap);
 
 	String translateKey(String text, RequestConfig viewReqConfig, Map<String, Object> tranParamMap);
@@ -67,13 +76,13 @@ interface ViewService {
 	
 	String getValue(KeyValueSettingEn setting,String key);
 	
-	Integer setValue(KeyValueSettingEn setting,String key,String value);
+	int setValue(KeyValueSettingEn setting,String key,String value);
 	
-	Integer setValue(KeyValueSettingEn setting,String key,String value,String userId);
+	int setValue(KeyValueSettingEn setting,String key,String value,String userId);
 	
 	Map<String,Object> getData(KeyValueSettingEn setting,String key);
 	
-	Integer setData(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data,String userId);
+	int setData(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data,String userId);
 	
 	
 	

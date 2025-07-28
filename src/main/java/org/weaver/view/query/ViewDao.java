@@ -31,16 +31,19 @@ public interface ViewDao {
 
 	TableEn getTableInfo(String dataSourreBeanName,String table); 
 	
-	Integer executeSql(String dataSourceName, Map<String,Object> data, String sql,FieldEn autoIncrementField);
+	
+	int executeInsert(String dataSourceName, Map<String,Object> data, String sql, FieldEn autoIncrementField);
+	
+	int executeUpdate(String dataSourceName, Map<String,Object> data, String sql,String checkSql,Long assertMaxRecordAffected);
 	
 	int[] executeSqlBatch(String dataSourceName, List<Map<String,Object>> data, String sql);
 	
+	List<Map<String,Object>> listData(String dataSourreBeanName,Object[] values,String sql);
+
 	Map<String,Object> getKeyValueTable(KeyValueSettingEn setting,String key);
 	
-	Map<String,Object> readData(String dataSourreBeanName,Object[] values,String sql);
+	int updateKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data);
 	
-	Integer updateKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data);
-	
-	Integer insertKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data);
+	int insertKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data);
 	
 }

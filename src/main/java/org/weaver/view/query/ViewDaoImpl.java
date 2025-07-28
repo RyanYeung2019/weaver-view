@@ -14,7 +14,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
@@ -24,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.ArgumentPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementSetter;
@@ -65,7 +63,7 @@ public class ViewDaoImpl implements ViewDao {
 	private final static String AGGRTYPE_MAX = "max";
 	private final static String AGGRTYPE_MIN = "min";
 	
-	private final Map<String, TableEn> cacheTableMap = new ConcurrentHashMap<>();
+	
 	
 	private static final Logger log = LoggerFactory.getLogger(ViewDao.class);
 
@@ -116,99 +114,106 @@ public class ViewDaoImpl implements ViewDao {
 		String dataSourreBeanName = setting.getDataSourceName();
 		if(setting.getTypeData()==null)setting.setTypeData(new LinkedHashMap<>());
 		setting.getTypeData().put(setting.getKey(), key);
-		StringBuffer sql = new StringBuffer("select ");
-		sql.append("*");
-		sql.append(" from ");
-		sql.append(setting.getTable().replace("'","''"));
-		sql.append(" where ");
-		sql.append(setting.getTypeData().keySet().stream().map(s->s+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
+		String selectSql = setting.getSelectSql();
+		if(selectSql==null) {
+			StringBuffer sql = new StringBuffer("select ");
+			sql.append("*");
+			sql.append(" from ");
+			sql.append(setting.getTable().replace("'","''"));
+			sql.append(" where ");
+			sql.append(setting.getTypeData().keySet().stream().map(s->s+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
+			selectSql = sql.toString();
+			setting.setSelectSql(selectSql);
+		}
 		Object[] values = setting.getTypeData().values().stream().toArray(Object[]::new);
- 		try {
- 			return readData(dataSourreBeanName,values,sql.toString());
-	    } catch (EmptyResultDataAccessException e) {
-	    	return null;	
-	    }
+		List<Map<String,Object>> datas = listData(dataSourreBeanName,values,selectSql);
+		if(datas.size()>1)throw new RuntimeException("Return more than one record!");
+		if(datas.size()==0) return null;
+		return datas.get(0);
 	}
 	
-	public Map<String,Object> readData(String dataSourreBeanName,Object[] values,String sql){
+	public List<Map<String,Object>> listData(String dataSourreBeanName,Object[] values,String sql){
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
- 		try {
- 			return jdbcTemplate.queryForMap(sql, values);
-	    } catch (EmptyResultDataAccessException e) {
-	    	return null;	
-	    }
+		return jdbcTemplate.queryForList(sql, values);
 	}
 	
-	public Integer updateKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data){
+	public int updateKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data){
 		String dataSourreBeanName = setting.getDataSourceName();
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-		
 		if(setting.getTypeData()==null)setting.setTypeData(new LinkedHashMap<>());
 		setting.getTypeData().put(setting.getKey(), key);
-
-		StringBuffer sql = new StringBuffer("update ");
-		sql.append(setting.getTable().replace("'","''"));
-		sql.append(" set ");
-		sql.append(data.keySet().stream().map(s->s+"=? ").collect(Collectors.joining(",")).replace("'","''"));
-		sql.append(" where ");
-		sql.append(setting.getTypeData().keySet().stream().map(s->s+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
-
+		String updateSql = setting.getUpdateSql();
+		if(updateSql==null) {
+			StringBuffer sql = new StringBuffer("update ");
+			sql.append(setting.getTable().replace("'","''"));
+			sql.append(" set ");
+			sql.append(data.keySet().stream().map(s->s+"=? ").collect(Collectors.joining(",")).replace("'","''"));
+			sql.append(" where ");
+			sql.append(setting.getTypeData().keySet().stream().map(s->s+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
+			updateSql = sql.toString();
+			setting.setUpdateSql(updateSql);
+		}
 		List<Object> result = new ArrayList<>(data.values());
 		result.addAll(new ArrayList<>(setting.getTypeData().values()));
-
- 		try {
- 			return jdbcTemplate.update(sql.toString(),result.stream().toArray(Object[]::new));
-	    } catch (EmptyResultDataAccessException e) {
-	    	return 0;	
-	    }
+		return jdbcTemplate.update(updateSql,result.stream().toArray(Object[]::new));
 	}	
 	
-	public Integer insertKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data){
+	public int insertKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data){
 		String dataSourreBeanName = setting.getDataSourceName();
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-		
 		if(setting.getTypeData()==null)setting.setTypeData(new LinkedHashMap<>());
 		setting.getTypeData().put(setting.getKey(), key);
-		
-		StringBuffer sql = new StringBuffer("insert into ");
-		sql.append(setting.getTable().replace("'","''"));
-		sql.append("(");
-		sql.append(String.join(",", setting.getTypeData().keySet()).replace("'","''")+",");
-		sql.append(String.join(",", data.keySet()).replace("'","''"));
-		sql.append(")values(");
-		sql.append(setting.getTypeData().keySet().stream().map(s->"?").collect(Collectors.joining(","))+",");
-		sql.append(data.keySet().stream().map(s->"?").collect(Collectors.joining(",")));
-		sql.append(")");
-		
+		String insertSql = setting.getInsertSql();
+		if(insertSql==null) {
+			StringBuffer sql = new StringBuffer("insert into ");
+			sql.append(setting.getTable().replace("'","''"));
+			sql.append("(");
+			sql.append(String.join(",", setting.getTypeData().keySet()).replace("'","''")+",");
+			sql.append(String.join(",", data.keySet()).replace("'","''"));
+			sql.append(")values(");
+			sql.append(setting.getTypeData().keySet().stream().map(s->"?").collect(Collectors.joining(","))+",");
+			sql.append(data.keySet().stream().map(s->"?").collect(Collectors.joining(",")));
+			sql.append(")");
+			insertSql = sql.toString();
+			setting.setInsertSql(insertSql);
+		}
 		List<Object> result = new ArrayList<>(setting.getTypeData().values());
 		result.addAll(new ArrayList<>(data.values()));
- 		try {
- 			return jdbcTemplate.update(sql.toString(),result.stream().toArray(Object[]::new));
-	    } catch (EmptyResultDataAccessException e) {
-	    	return 0;	
-	    }
+		return jdbcTemplate.update(insertSql,result.stream().toArray(Object[]::new));
 	}
 	
-	public Integer executeSql(String dataSourceName, Map<String,Object> data, String sql,FieldEn autoIncrementField) {
+	public int executeInsert(String dataSourceName, Map<String,Object> data, String sql, FieldEn autoIncrementField) {
 		String dataSourreBeanName = dataSourceName;
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
 		NamedParameterJdbcTemplate namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
         SqlParameterSource parameterSource = new MapSqlParameterSource(data);
         Integer result=0;
-        if(autoIncrementField!=null) {
-        	String aiField = autoIncrementField.getField();
-            KeyHolder keyHolder = new GeneratedKeyHolder();
-            result = namedParameterJdbcTemplate.update(sql, parameterSource, keyHolder, new String[]{aiField} );
-            Number keys = keyHolder.getKey();
-           	data.put(autoIncrementField.getField(), keys.longValue());            	
-        }else {
-        	result = namedParameterJdbcTemplate.update(sql, parameterSource);
+    	String aiField = autoIncrementField.getField();
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        result = namedParameterJdbcTemplate.update(sql, parameterSource, keyHolder, new String[]{aiField} );
+        Number keys = keyHolder.getKey();
+       	data.put(autoIncrementField.getField(), keys.longValue());            	
+       	return result;
+	}
+	
+	public int executeUpdate(String dataSourceName, Map<String,Object> data, String sql,String checkSql,Long assertMaxRecordAffected) {
+		String dataSourreBeanName = dataSourceName;
+		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
+		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+		NamedParameterJdbcTemplate namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
+        SqlParameterSource parameterSource = new MapSqlParameterSource(data);
+        if(checkSql!=null && assertMaxRecordAffected!=null) {
+        	Long count = namedParameterJdbcTemplate.queryForObject(checkSql, data, Long.class);
+        	//count.longValue()>assertMaxRecordAffected.longValue()
+        	if(Long.compare(count,assertMaxRecordAffected)>0) {
+        		throw new RuntimeException(String.format("Affected records exceed the asserted number. assert %s actual %s",assertMaxRecordAffected,count));
+        	}
         }
-		return result;
+    	return namedParameterJdbcTemplate.update(sql, parameterSource);
 	}
 
 	public LinkedHashMap<String, Object> queryViewAggregate(ViewEn viewEn, Map<String, Object> queryParams, FilterCriteria filter,
@@ -281,15 +286,8 @@ public class ViewDaoImpl implements ViewDao {
 		}
 		StringBuilder stringBuilder = new StringBuilder(sql.length() + 40);
 		stringBuilder.append("select ");
-		boolean isFirst = true;
-		for (String fieldStr : fields) {
-			if (!isFirst) {
-				stringBuilder.append(",");
-			}
-			stringBuilder.append(fieldStr);
-			isFirst = false;
-		}
-		stringBuilder.append(" from (");
+		stringBuilder.append(fields.stream ().collect (Collectors.joining (",")));
+		stringBuilder.append(" from(");
 		stringBuilder.append(sql);
 		stringBuilder.append(") " + SqlUtils.varName());
 		return stringBuilder.toString();
@@ -423,7 +421,7 @@ public class ViewDaoImpl implements ViewDao {
 	public TableEn getTableInfo(String dataSourreBeanName,String table) {
 		String dsName = dataSourreBeanName==null?"dataSource":dataSourreBeanName;
 		String cacheKey = dsName+"|"+table;
-		TableEn tableEn = this.cacheTableMap.get(cacheKey);
+		TableEn tableEn = CacheUtils.cacheTableMap.get(cacheKey);
 		if(tableEn!=null) return tableEn;
 		tableEn = new TableEn(table);
 		final Map<String,List<TableFK>> tableForeig = new HashMap<>();
@@ -576,7 +574,7 @@ public class ViewDaoImpl implements ViewDao {
     	}catch(SQLException e) {
 			throw new RuntimeException(e);
 		}
-    	this.cacheTableMap.put(cacheKey,tableEn);
+    	CacheUtils.cacheTableMap.put(cacheKey,tableEn);
     	return tableEn;
 	}	
 	

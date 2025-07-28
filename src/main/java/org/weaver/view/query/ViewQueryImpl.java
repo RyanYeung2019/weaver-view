@@ -33,11 +33,11 @@ public class ViewQueryImpl implements ViewQuery {
 		return viewService.getValue(setting, key);
 	}
 	
-	public Integer setValue(KeyValueSettingEn setting,String key,String value) {
+	public int setValue(KeyValueSettingEn setting,String key,String value) {
 		return viewService.setValue(setting, key, value);
 	}
 	
-	public Integer setValue(KeyValueSettingEn setting,String key,String value,String userId) {
+	public int setValue(KeyValueSettingEn setting,String key,String value,String userId) {
 		return viewService.setValue(setting, key, value,userId);
 	}
 	
@@ -45,7 +45,7 @@ public class ViewQueryImpl implements ViewQuery {
 		return viewService.getData(setting, key);
 	}
 	
-	public Integer setData(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data,String userId) {
+	public int setData(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data,String userId) {
 		return viewService.setData(setting, key, data, userId);
 	}	
 	
@@ -94,17 +94,33 @@ public class ViewQueryImpl implements ViewQuery {
 		return viewService.readTable(dataSourceName,tableName,data,requestConfig);
 	}
 	
-	public <T> Integer insertTable(String datasource, String table, T data, RequestConfig requestConfig) {
+	public <T> int insertTable(String datasource, String table, T data, RequestConfig requestConfig) {
 		return viewService.insertTable(datasource,table,data,requestConfig);
 	}
 	
-	public <T> Integer updateTable(String datasource, String table, T data, RequestConfig requestConfig) {
+	public <T> int updateTable(String datasource, String table, T data, RequestConfig requestConfig) {
 		return viewService.updateTable(datasource,table,data,requestConfig);
 	}
 	
-	public <T> Integer deleteTable(String datasource, String table, T data, RequestConfig requestConfig) {
+	public <T> int deleteTable(String datasource, String table, T data, RequestConfig requestConfig) {
 		return viewService.deleteTable(datasource,table,data,requestConfig);
 	}
+	
+	public <T> List<T> listTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig, String... whereFields){
+		return viewService.listTable(dataSourceName, tableName, data, requestConfig, whereFields);
+	}
+	
+	public <T> int[] insertTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig){
+		return viewService.insertTableBatch(dataSourceName, tableName, dataList, requestConfig);
+	}
+	
+	public <T> int updateTableBatch(String dataSourceName, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields) {
+		return viewService.updateTableBatch(dataSourceName, tableName, data,assertMaxRecordAffected, requestConfig, whereFields);
+	}
+	
+	public <T> int deleteTableBatch(String dataSourceName, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields) {
+		return viewService.deleteTableBatch(dataSourceName, tableName,  data, assertMaxRecordAffected,  requestConfig, whereFields);
+	}		
 
 	public <T> JSONObject readViewTable(String view, T data,RequestConfig requestConfig) {
 		ViewEn viewEn = viewService.getViewInfo(view);
@@ -115,7 +131,7 @@ public class ViewQueryImpl implements ViewQuery {
 		return viewService.readTable(viewEn.getDataSource(), table , data,  requestConfig);
 	}
 	
-	public <T> Integer insertViewTable(String view, T data,RequestConfig requestConfig) {
+	public <T> int insertViewTable(String view, T data,RequestConfig requestConfig) {
 		ViewEn viewEn = viewService.getViewInfo(view);
 		String tables = viewEn.getMeta().getString("tables");
 		if (tables==null)
@@ -124,7 +140,7 @@ public class ViewQueryImpl implements ViewQuery {
 		return viewService.insertTable(viewEn.getDataSource(), table , data,  requestConfig);
 	}
 	
-	public <T> Integer updateViewTable(String view, T data,RequestConfig requestConfig) {
+	public <T> int updateViewTable(String view, T data,RequestConfig requestConfig) {
 		ViewEn viewEn = viewService.getViewInfo(view);
 		String tables = viewEn.getMeta().getString("tables");
 		if (tables==null)
@@ -133,7 +149,7 @@ public class ViewQueryImpl implements ViewQuery {
 		return viewService.updateTable(viewEn.getDataSource(),table,data,requestConfig);
 	}	
 	
-	public <T> Integer deleteViewTable(String view, T data,RequestConfig requestConfig) {
+	public <T> int deleteViewTable(String view, T data,RequestConfig requestConfig) {
 		ViewEn viewEn = viewService.getViewInfo(view);
 		String tables = viewEn.getMeta().getString("tables");
 		if (tables==null)

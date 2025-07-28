@@ -27,6 +27,10 @@ public class KeyValueSettingEn {
 	String updateUser;
 
 	LinkedHashMap<String,Object> typeData;
+	
+	String selectSql;
+	String updateSql;
+	String insertSql;
 
 
 	public KeyValueSettingEn( String table, String key, String value,
@@ -162,8 +166,29 @@ public class KeyValueSettingEn {
 		this.typeData = typeData;
 	}
 
+	public String getSelectSql() {
+		return selectSql;
+	}
 
+	public void setSelectSql(String selectSql) {
+		this.selectSql = selectSql;
+	}
 
+	public String getUpdateSql() {
+		return updateSql;
+	}
+
+	public void setUpdateSql(String updateSql) {
+		this.updateSql = updateSql;
+	}
+
+	public String getInsertSql() {
+		return insertSql;
+	}
+
+	public void setInsertSql(String insertSql) {
+		this.insertSql = insertSql;
+	}
 
 
 }
