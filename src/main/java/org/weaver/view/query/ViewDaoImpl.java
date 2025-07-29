@@ -192,28 +192,30 @@ public class ViewDaoImpl implements ViewDao {
 		NamedParameterJdbcTemplate namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
         SqlParameterSource parameterSource = new MapSqlParameterSource(data);
         Integer result=0;
-    	String aiField = autoIncrementField.getField();
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        result = namedParameterJdbcTemplate.update(sql, parameterSource, keyHolder, new String[]{aiField} );
-        Number keys = keyHolder.getKey();
-       	data.put(autoIncrementField.getField(), keys.longValue());            	
+        if(autoIncrementField!=null) {
+        	String aiField = autoIncrementField.getField();
+            KeyHolder keyHolder = new GeneratedKeyHolder();
+            result = namedParameterJdbcTemplate.update(sql, parameterSource, keyHolder, new String[]{aiField} );
+            Number keys = keyHolder.getKey();
+           	data.put(autoIncrementField.getField(), keys.longValue());            	
+        }else {
+            result = namedParameterJdbcTemplate.update(sql, parameterSource);
+        }
        	return result;
 	}
 	
 	public int executeUpdate(String dataSourceName, Map<String,Object> data, String sql,String checkSql,Long assertMaxRecordAffected) {
-		String dataSourreBeanName = dataSourceName;
-		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
+		DataSource dataSource = this.applicationContext.getBean(dataSourceName==null?"dataSource":dataSourceName, DataSource.class);
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
 		NamedParameterJdbcTemplate namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
-        SqlParameterSource parameterSource = new MapSqlParameterSource(data);
-        if(checkSql!=null && assertMaxRecordAffected!=null) {
-        	Long count = namedParameterJdbcTemplate.queryForObject(checkSql, data, Long.class);
-        	//count.longValue()>assertMaxRecordAffected.longValue()
-        	if(Long.compare(count,assertMaxRecordAffected)>0) {
-        		throw new RuntimeException(String.format("Affected records exceed the asserted number. assert %s actual %s",assertMaxRecordAffected,count));
-        	}
+        if(checkSql==null || assertMaxRecordAffected==null) {
+        	throw new RuntimeException("Need to assert max affect records.");
         }
-    	return namedParameterJdbcTemplate.update(sql, parameterSource);
+    	Long count = namedParameterJdbcTemplate.queryForObject(checkSql, data, Long.class);
+    	if(Long.compare(count,assertMaxRecordAffected)>0) {
+    		throw new RuntimeException(String.format("Affected records exceed the asserted number. assert max %s actual %s",assertMaxRecordAffected,count));
+    	}
+    	return namedParameterJdbcTemplate.update(sql, data);
 	}
 
 	public LinkedHashMap<String, Object> queryViewAggregate(ViewEn viewEn, Map<String, Object> queryParams, FilterCriteria filter,

@@ -240,7 +240,7 @@ public class ViewServiceImpl implements ViewService {
 					values.append(":"+feildEn.getField());
 				}
 			}
-			String sql = "INSERT INTO "+tableName+"("+fields+")VALUES("+values+")";
+			String sql = "insert into "+tableName+"("+fields+")VALUES("+values+")";
 			result = queryDao.executeInsert(dataSourceName, item, sql, autoIncEn); 
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
@@ -270,20 +270,20 @@ public class ViewServiceImpl implements ViewService {
 						if(!firstKey) {
 							upKeys.append(" and ");
 						}
-						upKeys.append(fieldEn.getFieldDb() + "= :"+fieldEn.getField() );
+						upKeys.append(fieldEn.getFieldDb() + "=:"+fieldEn.getField() );
 						firstKey = false;
 					}else {
 						if(!firstVal) {
-							upValues.append(" , ");
+							upValues.append(",");
 						}
-						upValues.append(fieldEn.getFieldDb() + "= :"+fieldEn.getField() );
+						upValues.append(fieldEn.getFieldDb() + "=:"+fieldEn.getField() );
 						firstVal = false;
 					}
 				}
 			}
 			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
 			String sql = "update "+tableName+" set "+upValues+" where "+upKeys;
-			String checkSql = "select count(*) from "+tableName+" where "+upKeys;
+			String checkSql = "select count(*)from "+tableName+" where "+upKeys;
 			result = queryDao.executeUpdate(dataSourceName, item, sql, checkSql,assertMaxRecordAffected); 
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
@@ -309,7 +309,7 @@ public class ViewServiceImpl implements ViewService {
 			@SuppressWarnings("unchecked")
 			Map<String,Object> item = (Map<String, Object>)data;
 			StringBuffer delKeys = new StringBuffer();
-			boolean fstKey = true;
+			boolean firstKey = true;
 			mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
 			for(String field:item.keySet()) {
 				FieldEn fieldEn = tableEn.getFieldEnMap().get(field);
@@ -317,16 +317,16 @@ public class ViewServiceImpl implements ViewService {
 					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig);
 					item.put(field, value);
 					if(Arrays.stream(whereFields).anyMatch(fieldEn.getFieldDb()::equals)) {
-						if(!fstKey) {
+						if(!firstKey) {
 							delKeys.append(" and ");
 						}
-						delKeys.append(fieldEn.getFieldDb() + "= :"+fieldEn.getField() );
-						fstKey = false;
+						delKeys.append(fieldEn.getFieldDb() + "=:"+fieldEn.getField() );
+						firstKey = false;
 					}
 				}
 			}
-			if(fstKey) throw new RuntimeException("key not found for table : "+tableName);
-			String sql = "delete from  "+tableName+" where "+delKeys;
+			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
+			String sql = "delete from "+tableName+" where "+delKeys;
 			String checkSql = "select count(*) from "+tableName+" where "+delKeys;
 			result = queryDao.executeUpdate(dataSourceName, item, sql, checkSql,assertMaxRecordAffected); 
 		}else {
