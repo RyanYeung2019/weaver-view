@@ -207,8 +207,8 @@ public class ViewDaoImpl implements ViewDao {
 		DataSource dataSource = this.applicationContext.getBean(dataSourceName==null?"dataSource":dataSourceName, DataSource.class);
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
 		NamedParameterJdbcTemplate namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
-        if(checkSql==null || assertMaxRecordAffected==null) {
-        	throw new RuntimeException("Need to assert max affect records.");
+        if(assertMaxRecordAffected==null) {
+        	assertMaxRecordAffected = 1l;
         }
     	Long count = namedParameterJdbcTemplate.queryForObject(checkSql, data, Long.class);
     	if(Long.compare(count,assertMaxRecordAffected)>0) {

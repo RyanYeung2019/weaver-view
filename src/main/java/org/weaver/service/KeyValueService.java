@@ -5,6 +5,12 @@ import java.util.Map;
 
 import org.weaver.query.entity.KeyValueSettingEn;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 public interface KeyValueService {
 	
 	String getValue(KeyValueSettingEn setting,String key);

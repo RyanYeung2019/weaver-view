@@ -10,6 +10,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.weaver.query.entity.KeyValueSettingEn;
 
+/**
+ *
+ * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+ * 
+ */
+
 @Component("keyValueService")
 public class KeyValueServiceImpl implements KeyValueService {
 	

@@ -113,27 +113,29 @@ public class TableServiceImpl implements TableService {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T> int[] insertTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig) {
+	public <T> int[] persistenTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig) {
 		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
 		List<Map<String,Object>> dataForInsert = new ArrayList<>();
 		int[] result = new int[] {}; 
-		if(requestConfig.getParams()!=null && requestConfig.getParams().size()>0) {
-			for(T data:dataList) {
-				Map<String,Object> item ;
-				if(data instanceof Map )
-					item = (Map<String, Object>)data;				
-				else
-					item = Utils.entityToMap(data);
-				mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
-				dataForInsert.add(item);
-			}
+		for(T data:dataList) {
+			Map<String,Object> item ;
+			if(data instanceof Map ) {
+				item = (Map<String, Object>)data;
+				for(String field:item.keySet()) {
+					FieldEn fieldEn = tableEn.getFieldEnMap().get(field);
+					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig);
+					item.put(field, value);
+				}
+			}else
+				item = Utils.entityToMap(data);
+			mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
+			dataForInsert.add(item);
 		}
 		if(dataForInsert.size()>0) {
 			List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
 			List<String> keyFields = keys.stream ()
 					.map (PrimaryKeyEn::getDbField)
 					.collect (Collectors.toList ());
-			
 			Map<String,Object> item = dataForInsert.get(0);
 			StringBuffer fields = new StringBuffer();
 			StringBuffer values = new StringBuffer();
@@ -144,9 +146,7 @@ public class TableServiceImpl implements TableService {
 			boolean firstKey = true;
 			for(String field:item.keySet()) {
 				FieldEn fieldEn = tableEn.getFieldEnMap().get(field);
-				if(fieldEn!=null && item.get(field)!=null) {
-					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig);
-					item.put(field, value);
+				if(fieldEn!=null) {
 					if(!first) {
 						fields.append(",");
 						values.append(",");
@@ -176,9 +176,10 @@ public class TableServiceImpl implements TableService {
 				if (tableEn.getSourceType().equals(SqlUtils.NAME_MYSQL)) {
 					sql = "INSERT INTO "+tableName+"("+fields+")VALUES("+values+")ON DUPLICATE KEY UPDATE "+upValues;
 				} else if (tableEn.getSourceType().equals(SqlUtils.NAME_PGSQL)) {
-					sql = "INSERT INTO "+tableName+"("+fields+")VALUES("+values+")ON CONFLICT ("+keysString+") DO UPDATE SET"+upValues;
+					sql = "INSERT INTO "+tableName+"("+fields+")VALUES("+values+")ON CONFLICT ("+keysString+") DO UPDATE SET "+upValues;
 				}
 			}
+			System.out.println("INSERT SQL::::::::"+sql);
 			result = queryDao.executeSqlBatch(dataSourceName,dataForInsert,sql);
 		}
 		return result;
@@ -196,17 +197,17 @@ public class TableServiceImpl implements TableService {
 			StringBuffer values = new StringBuffer();
 			boolean first = true;
 			for(String field:item.keySet()) {
-				FieldEn feildEn = tableEn.getFieldEnMap().get(field);
-				if(feildEn!=null && item.get(field)!=null) {
-					Object value = SqlUtils.convertObjVal(feildEn.getType(),item.get(field), requestConfig);
+				FieldEn fieldEn = tableEn.getFieldEnMap().get(field);
+				if(fieldEn!=null && item.get(field)!=null) {
+					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig);
 					item.put(field, value);
 					if(!first) {
 						fields.append(",");
 						values.append(",");
 					}
 					first = false;
-					fields.append(feildEn.getFieldDb());
-					values.append(":"+feildEn.getField());
+					fields.append(fieldEn.getFieldDb());
+					values.append(":"+fieldEn.getField());
 				}
 			}
 			String sql = "insert into "+tableName+"("+fields+")VALUES("+values+")";
@@ -235,7 +236,7 @@ public class TableServiceImpl implements TableService {
 				if(fieldEn!=null && item.get(field)!=null) {
 					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig);
 					item.put(field, value);
-					if(Arrays.stream(whereFields).anyMatch(fieldEn.getFieldDb()::equals)) {
+					if(Arrays.stream(whereFields).anyMatch(fieldEn.getField()::equals)) {
 						if(!firstKey) {
 							upKeys.append(" and ");
 						}
@@ -253,6 +254,7 @@ public class TableServiceImpl implements TableService {
 			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
 			String sql = "update "+tableName+" set "+upValues+" where "+upKeys;
 			String checkSql = "select count(*)from "+tableName+" where "+upKeys;
+			System.out.println("sql::::::::"+sql);
 			result = queryDao.executeUpdate(dataSourceName, item, sql, checkSql,assertMaxRecordAffected); 
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
@@ -266,7 +268,7 @@ public class TableServiceImpl implements TableService {
 		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
 		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
 		String[] keyFields = keys.stream()
-                .map(PrimaryKeyEn::getDbField)
+                .map(PrimaryKeyEn::getField)
                 .toArray(String[]::new);
 		return updateTableBatch(dataSourceName,tableName,data,1l,requestConfig,keyFields);
 	}	
@@ -285,7 +287,7 @@ public class TableServiceImpl implements TableService {
 				if(fieldEn!=null && item.get(field)!=null) {
 					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig);
 					item.put(field, value);
-					if(Arrays.stream(whereFields).anyMatch(fieldEn.getFieldDb()::equals)) {
+					if(Arrays.stream(whereFields).anyMatch(fieldEn.getField()::equals)) {
 						if(!firstKey) {
 							delKeys.append(" and ");
 						}
@@ -310,12 +312,10 @@ public class TableServiceImpl implements TableService {
 		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
 		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
 		String[] keyFields = keys.stream()
-                .map(PrimaryKeyEn::getDbField)
+                .map(PrimaryKeyEn::getField)
                 .toArray(String[]::new);
 		return deleteTableBatch(dataSourceName,tableName,data,1l,requestConfig,keyFields);		
 	}
-	
-
 
 	private void mergeData(List<FieldEn> fieldEns,Map<String,Object> param,Map<String,Object> data){
 		if(param==null || param.size()==0 ) return; 

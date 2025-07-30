@@ -24,7 +24,7 @@ public interface TableService {
 	
 	<T> int deleteTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 	
-	<T> int[] insertTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig);
+	<T> int[] persistenTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig);
 	
 	<T> int updateTableBatch(String dataSourceName, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields);
 	
