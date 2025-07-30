@@ -25,9 +25,9 @@ import org.weaver.config.entity.EnumApiEn;
 import org.weaver.config.entity.EnumDataEn;
 import org.weaver.config.entity.ViewEn;
 import org.weaver.config.entity.ViewField;
-import org.weaver.view.query.ViewDao;
-import org.weaver.view.query.ViewQuery;
-import org.weaver.view.query.entity.EnumItemEn;
+import org.weaver.query.entity.EnumItemEn;
+import org.weaver.service.ViewDao;
+import org.weaver.service.ViewQuery;
 import org.weaver.view.util.Utils;
 
 /**
