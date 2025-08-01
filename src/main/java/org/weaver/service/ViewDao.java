@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.weaver.config.entity.ViewEn;
 import org.weaver.query.entity.KeyValueSettingEn;
 import org.weaver.query.entity.SortByField;
@@ -36,7 +37,7 @@ public interface ViewDao {
 	
 	int executeUpdate(String dataSourceName, Map<String,Object> data, String sql,String checkSql,Long assertMaxRecordAffected);
 	
-	int[] executeSqlBatch(String dataSourceName, List<Map<String,Object>> data, String sql);
+	int[] executeSqlBatch(String dataSourceName, List<MapSqlParameterSource> data, String sql);
 	
 	List<Map<String,Object>> listData(String dataSourreBeanName,Object[] values,String sql);
 

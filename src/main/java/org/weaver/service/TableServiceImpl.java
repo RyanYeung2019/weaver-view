@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Component;
 import org.weaver.query.entity.RequestConfig;
 import org.weaver.table.entity.FieldEn;
@@ -115,7 +116,7 @@ public class TableServiceImpl implements TableService {
 	@SuppressWarnings("unchecked")
 	public <T> int[] persistenTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig) {
 		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
-		List<Map<String,Object>> dataForInsert = new ArrayList<>();
+		List<MapSqlParameterSource> dataForInsert = new ArrayList<>();
 		int[] result = new int[] {}; 
 		for(T data:dataList) {
 			Map<String,Object> item ;
@@ -129,14 +130,20 @@ public class TableServiceImpl implements TableService {
 			}else
 				item = Utils.entityToMap(data);
 			mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
-			dataForInsert.add(item);
+			MapSqlParameterSource msps = new MapSqlParameterSource();
+			System.out.println("--------");
+			for(String key:tableEn.getFieldEnMap().keySet()) {
+				FieldEn fieldEn = tableEn.getFieldEnMap().get(key);
+				msps.addValue(key, item.get(key),fieldEn.getSqlType());
+			}
+			dataForInsert.add(msps);
 		}
 		if(dataForInsert.size()>0) {
 			List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
 			List<String> keyFields = keys.stream ()
 					.map (PrimaryKeyEn::getDbField)
 					.collect (Collectors.toList ());
-			Map<String,Object> item = dataForInsert.get(0);
+			MapSqlParameterSource item = dataForInsert.get(0);
 			StringBuffer fields = new StringBuffer();
 			StringBuffer values = new StringBuffer();
 			StringBuffer upValues = new StringBuffer();
@@ -144,7 +151,7 @@ public class TableServiceImpl implements TableService {
 			boolean first = true;
 			boolean firstVal = true;
 			boolean firstKey = true;
-			for(String field:item.keySet()) {
+			for(String field:item.getParameterNames()) {
 				FieldEn fieldEn = tableEn.getFieldEnMap().get(field);
 				if(fieldEn!=null) {
 					if(!first) {

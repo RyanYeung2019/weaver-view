@@ -27,6 +27,7 @@ import org.springframework.jdbc.core.ArgumentPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.SqlParameterValue;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterUtils;
@@ -81,7 +82,7 @@ public class ViewDaoImpl implements ViewDao {
 		}
 	}
 
-	public int[] executeSqlBatch(String dataSourceName, List<Map<String,Object>> data, String sql) {
+	public int[] executeSqlBatch(String dataSourceName, List<MapSqlParameterSource> data, String sql) {
 		String dataSourreBeanName = dataSourceName;
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
@@ -89,15 +90,12 @@ public class ViewDaoImpl implements ViewDao {
         return batchUpdateLargeData(namedParameterJdbcTemplate,sql,data);
 	}
 	
-	private int[] batchUpdateLargeData(NamedParameterJdbcTemplate namedParameterJdbcTemplate,String sql, List<Map<String, Object>> entityList) {
+	private int[] batchUpdateLargeData(NamedParameterJdbcTemplate namedParameterJdbcTemplate,String sql, List<MapSqlParameterSource> entityList) {
 		int batchSize = 500;
 		int[] result = null;
 	    for (int i = 0; i < entityList.size(); i += batchSize) {
-	        List<Map<String, Object>> subList = entityList.subList(i, Math.min(i + batchSize, entityList.size()));
-	        SqlParameterSource[] batchArgs = subList.stream()
-	            .map(MapSqlParameterSource::new)
-	            .toArray(SqlParameterSource[]::new);
-	        int[] rows = namedParameterJdbcTemplate.batchUpdate(sql, batchArgs);
+	    	MapSqlParameterSource[] subList = entityList.subList(i, Math.min(i + batchSize, entityList.size())).toArray(new MapSqlParameterSource[0]);
+	        int[] rows = namedParameterJdbcTemplate.batchUpdate(sql,subList);
 	        result=result==null?rows:mergeArrays(result,rows);
 	    }
 	    return result;
@@ -561,7 +559,6 @@ public class ViewDaoImpl implements ViewDao {
                         genDataFieldEn.setAutoInc("YES".equals(isAutoIncrement));
 						genDataFieldEn.setNullable("YES".equals(isNullable));
                         genDataFieldEn.setSqlType(sqlType);
-                        genDataFieldEn.setType(FormatterUtils.convertSqlType(colName, sqlType));
                         genDataFieldEn.setTypeDb(typeDb);
                         //genDataFieldEn.setTypeJava(type);
                         genDataFieldEn.setPreci(precision);
