@@ -61,7 +61,7 @@ public class TableServiceImpl implements TableService {
 			}
 			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
 			String sql = "select * from "+tableName+" where "+whereKey;
-			return(List<T>) queryDao.listData(dataSourceName,values.toArray(Object[]::new), sql);
+			return(List<T>) queryDao.listData(dataSourceName,values.toArray(), sql);
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
 			List<Map<String,Object>> datas = listTable(dataSourceName,tableName,item,requestConfig,whereFields);

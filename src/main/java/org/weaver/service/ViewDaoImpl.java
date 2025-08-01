@@ -125,7 +125,7 @@ public class ViewDaoImpl implements ViewDao {
 			selectSql = sql.toString();
 			setting.setSelectSql(selectSql);
 		}
-		Object[] values = setting.getTypeData().values().stream().toArray(Object[]::new);
+		Object[] values = setting.getTypeData().values().stream().toArray();
 		List<Map<String,Object>> datas = listData(dataSourreBeanName,values,selectSql);
 		if(datas.size()>1)throw new RuntimeException("Return more than one record!");
 		if(datas.size()==0) return null;
@@ -157,7 +157,7 @@ public class ViewDaoImpl implements ViewDao {
 		}
 		List<Object> result = new ArrayList<>(data.values());
 		result.addAll(new ArrayList<>(setting.getTypeData().values()));
-		return jdbcTemplate.update(updateSql,result.stream().toArray(Object[]::new));
+		return jdbcTemplate.update(updateSql,result.stream().toArray());
 	}	
 	
 	public int insertKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data){
@@ -182,7 +182,7 @@ public class ViewDaoImpl implements ViewDao {
 		}
 		List<Object> result = new ArrayList<>(setting.getTypeData().values());
 		result.addAll(new ArrayList<>(data.values()));
-		return jdbcTemplate.update(insertSql,result.stream().toArray(Object[]::new));
+		return jdbcTemplate.update(insertSql,result.stream().toArray());
 	}
 	
 	public int executeInsert(String dataSourceName, Map<String,Object> data, String sql, FieldEn autoIncrementField) {
