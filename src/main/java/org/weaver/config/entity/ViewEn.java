@@ -44,6 +44,8 @@ public class ViewEn {
 	
 	private List<String> treeSearch;//searching CamelCase field list
 	
+	private int status = 0 ;//0 load success, -1 error
+	
 
 	public String getViewId() {
 		return viewId;
@@ -155,6 +157,14 @@ public class ViewEn {
 
 	public void setTreeParent(String treeParent) {
 		this.treeParent = treeParent;
+	}
+
+	public int getStatus() {
+		return status;
+	}
+
+	public void setStatus(int status) {
+		this.status = status;
 	}
 
 

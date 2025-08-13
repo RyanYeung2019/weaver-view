@@ -129,6 +129,9 @@ public class ViewStatementImpl implements ViewStatement {
 			ViewEn viewEn = viewService.getViewInfo(viewId);
 			if (viewEn == null)
 				throw new RuntimeException(String.format("view %s is not exits! ", viewId));
+			if(viewEn.getStatus()<0) {
+				throw new RuntimeException(viewEn.getRemark());
+			}
 			return viewService.query(viewEn, params, sortField, pageNum, pageSize, queryFilter, aggrList, rowMapper,
 					viewReqConfig);
 		} else {

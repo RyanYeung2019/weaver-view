@@ -1,5 +1,7 @@
 package org.weaver.config;
 
+import java.io.IOException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,10 +30,10 @@ public class LoadConfig implements ApplicationListener<ContextRefreshedEvent> {
 	@Override
 	public void onApplicationEvent(ContextRefreshedEvent event) {
 		try {
-			langDefine.loadLang();
-			viewDefine.loadView();
-			log.debug("load finished!");
-		} catch (Exception e) {
+			log.info(langDefine.loadLang());
+			log.info(viewDefine.loadView());
+			log.info("load finished!");
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}

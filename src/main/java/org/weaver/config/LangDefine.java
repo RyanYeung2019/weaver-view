@@ -1,6 +1,7 @@
 package org.weaver.config;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -110,19 +111,21 @@ public class LangDefine {
 		}
 	}
 
-	public void loadLang() throws Exception {
+	public String loadLang() throws IOException {
 		PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
 		String settingStr = "weaver-view.lang.path";
 		String defPath = "/lang";
 		String searchFile = "/*.yml";
 		String langPath = environment.getProperty(settingStr);
+		StringBuffer message = new StringBuffer();
 		if (langPath == null) {
-			log.info(
-					String.format("Config setting [%s] not found. Default path of lang is:[%s]", settingStr, defPath));
+			message.append(
+					String.format("Config setting [%s] not found. Default path of lang is:[%s]"+"\n", settingStr, defPath));
 			try {
 				resolver.getResources(defPath+searchFile);
 			}catch(FileNotFoundException e){
-				return;
+				message.append("Nothing to load"+"\n");
+				return message.toString();
 			}
 			langPath = defPath;
 		}
@@ -130,42 +133,48 @@ public class LangDefine {
 		try {
 			resources = resolver.getResources(Utils.toPath(langPath) + searchFile);
 		}catch(Exception e) {
-			log.warn(e.getMessage());
+			message.append(e.getMessage()+"\n");
 		}		
 		for (Resource file : resources) {
 			String name = file.getFilename();
-			if (!name.endsWith(".yml"))
-				continue;
-			String lang = name.substring(0, name.length() - 4);
-			YamlRecursion yr = new YamlRecursion(file.getInputStream()){
-				@Override
-				public Map<String, Object> putData(LinkedHashMap<String, Object> mapData, String resultPath) {
-					Map<String, Object> result = super.procee(mapData, resultPath);
-					Object enumData = loadEnumData(mapData);
-					if(enumData!=null) result.put(resultPath, enumData);
-					return result;
-				}
-			};
-			Map<String, Object> langMap = yr.getYmlMap();
-			for (String key : langMap.keySet()) {
-				if(key==null)continue;
-				Object value = langMap.get(key);
-				String langKey = lang + "|" + key;
-				if(value instanceof String) {
-					String checkIfKey = (String) value;
-					for(String subKey : langMap.keySet()) {
-						if(subKey==null)continue;
-						Object subValue = langMap.get(subKey);
-						if(subKey.startsWith(checkIfKey) && !subKey.equals(checkIfKey)) {
-							String newKey = subKey.replaceFirst(checkIfKey, key);
-							putLangMapValue(lang + "|" +newKey,subKey,subValue);
+			try {
+				if (!name.endsWith(".yml"))
+					continue;
+				String lang = name.substring(0, name.length() - 4);
+				YamlRecursion yr = new YamlRecursion(file.getInputStream()){
+					@Override
+					public Map<String, Object> putData(LinkedHashMap<String, Object> mapData, String resultPath) {
+						Map<String, Object> result = super.procee(mapData, resultPath);
+						Object enumData = loadEnumData(mapData);
+						if(enumData!=null) result.put(resultPath, enumData);
+						return result;
+					}
+				};
+				Map<String, Object> langMap = yr.getYmlMap();
+				for (String key : langMap.keySet()) {
+					if(key==null)continue;
+					Object value = langMap.get(key);
+					String langKey = lang + "|" + key;
+					if(value instanceof String) {
+						String checkIfKey = (String) value;
+						for(String subKey : langMap.keySet()) {
+							if(subKey==null)continue;
+							Object subValue = langMap.get(subKey);
+							if(subKey.startsWith(checkIfKey) && !subKey.equals(checkIfKey)) {
+								String newKey = subKey.replaceFirst(checkIfKey, key);
+								putLangMapValue(lang + "|" +newKey,subKey,subValue);
+							}
 						}
 					}
+					putLangMapValue(langKey,key,value);
 				}
-				putLangMapValue(langKey,key,value);
+				message.append("Loaded language file:" + name+"\n");
+			}catch(Exception e) {
+				log.error("load language file:"+name+" error.",e);
+				message.append("load language file:"+name+" error. "+e.getMessage()+"\n");
 			}
-			log.debug("Loaded langage file:" + name);
 		}
+		return message.toString();
 	}
 	
 	private void putLangMapValue(String langKey,String key, Object value) {

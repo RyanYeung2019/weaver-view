@@ -131,7 +131,6 @@ public class TableServiceImpl implements TableService {
 				item = Utils.entityToMap(data);
 			mergeData(tableEn.getFieldEns(),requestConfig.getParams(),item);
 			MapSqlParameterSource msps = new MapSqlParameterSource();
-			System.out.println("--------");
 			for(String key:tableEn.getFieldEnMap().keySet()) {
 				FieldEn fieldEn = tableEn.getFieldEnMap().get(key);
 				msps.addValue(key, item.get(key),fieldEn.getSqlType());
@@ -186,7 +185,6 @@ public class TableServiceImpl implements TableService {
 					sql = "INSERT INTO "+tableName+"("+fields+")VALUES("+values+")ON CONFLICT ("+keysString+") DO UPDATE SET "+upValues;
 				}
 			}
-			System.out.println("INSERT SQL::::::::"+sql);
 			result = queryDao.executeSqlBatch(dataSourceName,dataForInsert,sql);
 		}
 		return result;
@@ -261,7 +259,6 @@ public class TableServiceImpl implements TableService {
 			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
 			String sql = "update "+tableName+" set "+upValues+" where "+upKeys;
 			String checkSql = "select count(*)from "+tableName+" where "+upKeys;
-			System.out.println("sql::::::::"+sql);
 			result = queryDao.executeUpdate(dataSourceName, item, sql, checkSql,assertMaxRecordAffected); 
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
