@@ -3,6 +3,8 @@ package org.weaver.query.mapper;
 import java.lang.reflect.Field;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -10,9 +12,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.weaver.config.entity.ViewField;
 import org.weaver.service.Translator;
+import org.weaver.view.util.Utils;
 
 /**
  *
@@ -21,6 +26,9 @@ import org.weaver.service.Translator;
  */
 
 public class BeanPropRowMapper<T> extends BeanPropertyRowMapper<T> {
+	
+	private static final Logger log = LoggerFactory.getLogger(BeanPropRowMapper.class);
+
 	
 	private List<ViewField> fieldList;
 	//Collector
@@ -66,15 +74,8 @@ public class BeanPropRowMapper<T> extends BeanPropertyRowMapper<T> {
 			if(value!=null) {
 				try {
 					beanField.setAccessible(true);
-					if(!value.getClass().toString().equals(beanField.getType().toString())) {
-						if(value instanceof LocalDateTime) {
-							value = Date.from(((LocalDateTime) value).atZone(ZoneId.systemDefault()).toInstant());
-						}
-						if(value instanceof LocalDate) {
-							value = Date.from(((LocalDate) value).atStartOfDay(ZoneId.systemDefault()).toInstant());
-						}
-					} 
-					beanField.set(item, value);
+					Object _value = Utils.convertEntityValue(value,beanField.getType());
+ 					beanField.set(item, _value);
 				} catch (IllegalArgumentException | IllegalAccessException e) {
 					throw new RuntimeException(e);
 				}

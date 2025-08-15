@@ -3,6 +3,7 @@ package org.weaver.service;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,7 @@ class SqlUtils {
 	public static final String NAME_PGSQL = "postgres";
 	public static final String NAME_MSSQL = "mssql";
 	public static final String NAME_MYSQL = "mysql";
+	public static final String NAME_SQLITE = "sqlite";
 
 	private static String[] OPS = { 
 			QueryCriteria.OP_EQUAL, 
@@ -137,38 +139,41 @@ class SqlUtils {
 				filterCriteria.setNot(false);
 				filterCriteria.setOp(opSelect);
 			}
-			filterCriteria.setVal(convertObjVal(fieldType, schValue, viewReqConfig));
+			filterCriteria.setVal(convertObjVal(fieldType, schValue, viewReqConfig,dataSourceType));
 			calDbSqlVal(filterCriteria, dataSourceType);
 		}
 		return result;
 	}
 
-	public static Object convertObjVal(String type, Object val,RequestConfig viewReqConfig) {
+	public static Object convertObjVal(String type, Object val,RequestConfig viewReqConfig,String dataSourceType) {
 		if(val ==null) return null;
 		Object result = val;
 		if (ViewField.FIELDTYPE_BOOLEAN.equals(type)) {
 			result = Boolean.valueOf(val.toString());
 		}
-		if (ViewField.FIELDTYPE_DATE.equals(type) && val instanceof String ) {
+		if (!NAME_SQLITE.equals(dataSourceType) && ViewField.FIELDTYPE_DATE.equals(type) && val instanceof String ) {
 			try {
 				result = viewReqConfig.getDateFormat().parse(val.toString());
 			} catch (ParseException e) {
 				throw new RuntimeException(String.format("Cannot parse %s to %s ",val,ViewField.FIELDTYPE_DATE));
 			}
 		}
-		if ( ViewField.FIELDTYPE_TIME.equals(type) && val instanceof String ) {
+		if (!NAME_SQLITE.equals(dataSourceType) && ViewField.FIELDTYPE_TIME.equals(type) && val instanceof String ) {
 			try {
 				result = viewReqConfig.getTimeFormat().parse(val.toString());
 			} catch (ParseException e) {
 				throw new RuntimeException(String.format("Cannot parse %s to %s ",val,ViewField.FIELDTYPE_TIME));
 			}
 		}
-		if (ViewField.FIELDTYPE_DATETIME.equals(type) && val instanceof String ) {
+		if (!NAME_SQLITE.equals(dataSourceType) && ViewField.FIELDTYPE_DATETIME.equals(type) && val instanceof String ) {
 			try {
 				result = viewReqConfig.getDatetimeFormat().parse(val.toString());
 			} catch (ParseException e) {
 				throw new RuntimeException(String.format("Cannot parse %s to %s ",val,ViewField.FIELDTYPE_DATETIME));
 			}
+		}
+		if ( ViewField.FIELDTYPE_STRING.equals(type) && val instanceof Date ) {
+				result = viewReqConfig.getDatetimeFormat().format(val);
 		}
 		if (ViewField.FIELDTYPE_NUMBER.equals(type) && val instanceof String) {
 			if (val.toString().contains(".")) {
@@ -177,10 +182,9 @@ class SqlUtils {
 				result = Long.parseLong(val.toString());
 			}
 		}
-		if (ViewField.FIELDTYPE_STRING.equals(type) && !StringUtils.hasText((String) val)) {
+		if (ViewField.FIELDTYPE_STRING.equals(type) && !StringUtils.hasText( val.toString())) {
 			result = null;
 		}
-	
 		return result;
 	}
 

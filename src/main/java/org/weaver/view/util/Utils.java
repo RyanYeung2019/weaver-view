@@ -9,8 +9,18 @@ import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.weaver.query.mapper.BeanPropRowMapper;
 
 /**
  *
@@ -19,6 +29,7 @@ import java.util.Map;
  */
 
 public class Utils {
+	private static final Logger log = LoggerFactory.getLogger(Utils.class);
 
 	public static String urlDecoder(String value) {
 		if (value == null)
@@ -73,12 +84,44 @@ public class Utils {
         try {
             for (Map.Entry<String, Object> entry : map.entrySet()) {
                 Field field = instance.getClass().getDeclaredField(entry.getKey());
-                field.setAccessible(true);
-                field.set(instance, entry.getValue());
+                Object value = entry.getValue();
+    			if(value!=null) {
+    				try {
+    					field.setAccessible(true);
+    					Object _value = Utils.convertEntityValue(value,field.getType());
+    					field.set(instance, _value);
+    				} catch (IllegalArgumentException | IllegalAccessException e) {
+    					throw new RuntimeException(e);
+    				}
+    			}                
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }    
+    }
     
+    public static Object convertEntityValue(Object value,Class<?> type) {
+    	Object result = value;
+		if(!value.getClass().toString().equals(type.toString())) {
+			if(value instanceof Integer && "class java.lang.Boolean".equals(type.toString())) {
+				result=((Integer)value).intValue()==1?true:false;
+			}
+			if(value instanceof String && "class java.util.Date".equals(type.toString())) {
+				SimpleDateFormat simpleDateFormat =  new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+				try {
+					result = simpleDateFormat.parse((String)value);
+				} catch (ParseException e) {
+					result = null;
+					log.error("parse error:",e);
+				}
+			}
+			if(value instanceof LocalDateTime) {
+				result = Date.from(((LocalDateTime) value).atZone(ZoneId.systemDefault()).toInstant());
+			}
+			if(value instanceof LocalDate) {
+				result = Date.from(((LocalDate) value).atStartOfDay(ZoneId.systemDefault()).toInstant());
+			}
+		}   
+		return result;
+    }
 }

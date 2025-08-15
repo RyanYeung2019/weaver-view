@@ -439,7 +439,7 @@ public class ViewServiceImpl implements ViewService {
 						String.format("ViewId %s Param %s is require!", viewEn.getViewId(), key));
 			} else {
 				if(value instanceof String) {
-					queryParams.put(key, SqlUtils.convertObjVal(type, value,viewReqConfig));
+					queryParams.put(key, SqlUtils.convertObjVal(type, value,viewReqConfig,viewEn.getSourceType()));
 				}else {
 					queryParams.put(key, value);
 				}

@@ -6,6 +6,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -18,6 +20,7 @@ import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.JdbcUtils;
 import org.springframework.jdbc.support.KeyHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +33,9 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterUtils;
+import org.springframework.jdbc.core.namedparam.ParsedSql;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.weaver.config.entity.ViewEn;
@@ -47,6 +52,8 @@ import org.weaver.table.entity.PrimaryKeyEn;
 import org.weaver.table.entity.TableEn;
 import org.weaver.table.entity.TableFK;
 import org.weaver.view.util.FormatterUtils;
+
+import jdk.internal.org.objectweb.asm.Type;
 
 /**
  *
@@ -71,14 +78,18 @@ public class ViewDaoImpl implements ViewDao {
 	private ApplicationContext applicationContext;
 
 	public String getDataType(String dataSourceName) {
+		DataSource dataSource = this.applicationContext.getBean(dataSourceName==null?"dataSource":dataSourceName, DataSource.class);
+		Connection conn = DataSourceUtils.getConnection(dataSource);
 		try {
-			DataSource dataSource = this.applicationContext.getBean(dataSourceName==null?"dataSource":dataSourceName, DataSource.class);
-			try (Connection conn = dataSource.getConnection();) {
-				return getDatabaseType(conn);
-			}
-		} catch (SQLException e) {
-			throw new RuntimeException(e);
-		}
+			return getDatabaseType(conn);
+		}catch (Exception ex) {
+			DataSourceUtils.releaseConnection(conn, dataSource);
+			conn = null;
+			log.error("error:",ex);
+			throw new RuntimeException(ex);
+		}finally {
+			DataSourceUtils.releaseConnection(conn, dataSource);
+		}			
 	}
 
 	public int[] executeSqlBatch(String dataSourceName, List<MapSqlParameterSource> data, String sql) {
@@ -325,10 +336,15 @@ public class ViewDaoImpl implements ViewDao {
 		long startTotal = (new Date()).getTime();
 		long totalTime = 0l;
 		long loopTime = 0l;
-		Object[] params = NamedParameterUtils.buildValueArray(queryString, param);
+		MapSqlParameterSource msps = new MapSqlParameterSource(param);
+		ParsedSql parsedSql = NamedParameterUtils.parseSqlStatement(sql);
+		Object[] params = NamedParameterUtils.buildValueArray(parsedSql, msps, null);
 		String sqlRun = NamedParameterUtils.parseSqlStatementIntoString(queryString);
 		List<T> data = new ArrayList<>();
-		try (Connection conn = dataSource.getConnection(); PreparedStatement psIns = conn.prepareStatement(sqlRun)) {
+		Connection conn = DataSourceUtils.getConnection(dataSource);
+		PreparedStatement psIns = null;
+		try {
+			psIns = conn.prepareStatement(sqlRun);
 			PreparedStatementSetter pss = new ArgumentPreparedStatementSetter(params);
 			pss.setValues(psIns);
 			try (ResultSet rSet = psIns.executeQuery()) {
@@ -343,11 +359,18 @@ public class ViewDaoImpl implements ViewDao {
 			totalTime = (new Date()).getTime() - startTotal;
 			log.debug("loopTime:" + loopTime+" totalTime:" + totalTime);
 			log.debug("data:\n"+data.toString());
-			return data;
-		} catch (Exception e) {
-			log.error("error:",e);
-			throw new RuntimeException(e);
-		}
+			return data;		
+		}catch (SQLException ex) {
+			JdbcUtils.closeStatement(psIns);
+			psIns = null;			
+			DataSourceUtils.releaseConnection(conn, dataSource);
+			conn = null;
+			log.error("error:",ex);
+			throw new RuntimeException(ex);
+		}finally {
+			JdbcUtils.closeStatement(psIns);
+			DataSourceUtils.releaseConnection(conn, dataSource);
+		}			
 	}
 
 	private String makeOrderBy(ViewEn viewEn, SortByField[] sortField) {
@@ -395,6 +418,9 @@ public class ViewDaoImpl implements ViewDao {
 					type = SqlUtils.NAME_MSSQL;
 				} else if (databaseProductName.matches("(?i).*postgres.*")) {
 					type = SqlUtils.NAME_PGSQL;
+				} else if (databaseProductName.matches("(?i).*sqlite*")) {
+					type = SqlUtils.NAME_SQLITE;
+					
 				} else {
 					String msg = "Unsupported database: " + databaseProductName;
 					throw new RuntimeException(msg, null);
@@ -428,7 +454,10 @@ public class ViewDaoImpl implements ViewDao {
 		final Map<String,List<TableFK>> tableForeig = new HashMap<>();
 		tableForeig.put(tableEn.getTableId(), new ArrayList<>());
 		DataSource dataSource = this.applicationContext.getBean(dsName, DataSource.class);
-    	try(Connection conn =  dataSource.getConnection();){
+		Connection conn = DataSourceUtils.getConnection(dataSource);
+		Statement stmt = null;
+		try {
+			stmt = conn.createStatement();
     		DatabaseMetaData dbMeta = conn.getMetaData();
     		String[] tableArray = table.split("[.]");
     		String catalog = conn.getCatalog();
@@ -441,7 +470,7 @@ public class ViewDaoImpl implements ViewDao {
         		tableName = tableArray[1];
     		}
         	List<String> pk = new ArrayList<>();
-        	try(ResultSet tableList = dbMeta.getTables(catalog, database,tableName,new String[]{"TABLE"})){
+        	try(ResultSet tableList = dbMeta.getTables(catalog, database,tableName,null)){
                 while(tableList.next()){
                 	String tableDisp =(String) tableList.getObject("REMARKS");
                     if(tableDisp!=null && tableDisp.trim().equals("")){
@@ -570,63 +599,82 @@ public class ViewDaoImpl implements ViewDao {
                     tableEn.setFieldEns(fieldEns);
                     tableEn.setFieldEnMap(fieldEnMap);
                 }                
-            }
-    	}catch(SQLException e) {
-			throw new RuntimeException(e);
+            }			
+			
 		}
+		catch (SQLException ex) {
+			JdbcUtils.closeStatement(stmt);
+			stmt = null;			
+			DataSourceUtils.releaseConnection(conn, dataSource);
+			conn = null;
+			throw new RuntimeException(ex);
+		}
+		finally {
+			JdbcUtils.closeStatement(stmt);
+			DataSourceUtils.releaseConnection(conn, dataSource);
+		}		
     	CacheUtils.cacheTableMap.put(cacheKey,tableEn);
     	return tableEn;
 	}	
 	
 	private List<ViewField> listFieldType(String dataSourceName, String queryStr,
 			Map<String, Object> critParams) {
+		Object[] params = NamedParameterUtils.buildValueArray(queryStr, critParams);
+		String sql = NamedParameterUtils.parseSqlStatementIntoString(queryStr);
 		String dsName = dataSourceName==null?"dataSource":dataSourceName;
 		List<ViewField> listFields = new ArrayList<>();
+		DataSource dataSource = this.applicationContext.getBean(dsName, DataSource.class);
+		Connection conn = DataSourceUtils.getConnection(dataSource);
+		PreparedStatement psIns = null;
 		try {
-			Object[] params = NamedParameterUtils.buildValueArray(queryStr, critParams);
-			String sql = NamedParameterUtils.parseSqlStatementIntoString(queryStr);
-			DataSource dataSource = this.applicationContext.getBean(dsName, DataSource.class);
-			try (Connection conn = dataSource.getConnection(); PreparedStatement psIns = conn.prepareStatement(sql)) {
-				PreparedStatementSetter pss = new ArgumentPreparedStatementSetter(params);
-				pss.setValues(psIns);
-				List<String> checkExistsField = new ArrayList<>();
-				try (ResultSet rSet = psIns.executeQuery()) {
-					ResultSetMetaData rem = rSet.getMetaData();
-					for (int i = 1; i <= rem.getColumnCount(); i++) {
-						String name = rem.getColumnName(i);
-						if (checkExistsField.contains(name)) {
-							throw new RuntimeException(queryStr + " has duplicate fields!");
-						}
-						checkExistsField.add(name);
-						int sqlType = rem.getColumnType(i);
-						String type = rem.getColumnClassName(i);
-						Integer precision = rem.getPrecision(i);
-						Integer scale = rem.getScale(i);
-						String typeDb = rem.getColumnTypeName(i);
-						int nullable = rem.isNullable(i);
-						String fieldName = FormatterUtils.toCamelCase(name);
-						ViewField viewField = new ViewField(fieldName);
-						viewField.setFieldDb(name);
-						viewField.setSqlType(sqlType);
-						viewField.setType(FormatterUtils.convertSqlType(name, sqlType));
-						viewField.setTypeDb(typeDb);
-						viewField.setTypeJava(type);
-						
-						viewField.setPreci(precision);
-						viewField.setScale(scale);
-						if (nullable == ResultSetMetaData.columnNoNulls) {
-							viewField.setNullable(false);
-						}
-						if (nullable == ResultSetMetaData.columnNullable) {
-							viewField.setNullable(true);
-						}
-						listFields.add(viewField);
+			psIns = conn.prepareStatement(sql);
+			PreparedStatementSetter pss = new ArgumentPreparedStatementSetter(params);
+			pss.setValues(psIns);
+			List<String> checkExistsField = new ArrayList<>();
+			try (ResultSet rSet = psIns.executeQuery()) {
+				ResultSetMetaData rem = rSet.getMetaData();
+				for (int i = 1; i <= rem.getColumnCount(); i++) {
+					String name = rem.getColumnName(i);
+					if (checkExistsField.contains(name)) {
+						throw new RuntimeException(queryStr + " has duplicate fields!");
 					}
+					checkExistsField.add(name);
+					int sqlType = rem.getColumnType(i);
+					String type = rem.getColumnClassName(i);
+					Integer precision = rem.getPrecision(i);
+					Integer scale = rem.getScale(i);
+					String typeDb = rem.getColumnTypeName(i);
+					int nullable = rem.isNullable(i);
+					String fieldName = FormatterUtils.toCamelCase(name);
+					ViewField viewField = new ViewField(fieldName);
+					viewField.setFieldDb(name);
+					viewField.setSqlType(sqlType);
+					viewField.setType(FormatterUtils.convertSqlType(name, sqlType));
+					viewField.setTypeDb(typeDb);
+					viewField.setTypeJava(type);
+					
+					viewField.setPreci(precision);
+					viewField.setScale(scale);
+					if (nullable == ResultSetMetaData.columnNoNulls) {
+						viewField.setNullable(false);
+					}
+					if (nullable == ResultSetMetaData.columnNullable) {
+						viewField.setNullable(true);
+					}
+					listFields.add(viewField);
 				}
-			}
-		} catch (SQLException e) {
-			throw new RuntimeException(e);
-		}
+			}			
+		}catch (SQLException ex) {
+			JdbcUtils.closeStatement(psIns);
+			psIns = null;			
+			DataSourceUtils.releaseConnection(conn, dataSource);
+			conn = null;
+			log.error("error:",ex);
+			throw new RuntimeException(ex);
+		}finally {
+			JdbcUtils.closeStatement(psIns);
+			DataSourceUtils.releaseConnection(conn, dataSource);
+		}			
 		return listFields;
 	}	
 	
