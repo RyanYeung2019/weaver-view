@@ -3,17 +3,9 @@ package org.weaver.query.mapper;
 import java.lang.reflect.Field;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.weaver.config.entity.ViewField;
 import org.weaver.service.Translator;
@@ -27,8 +19,6 @@ import org.weaver.view.util.Utils;
 
 public class BeanPropRowMapper<T> extends BeanPropertyRowMapper<T> {
 	
-	private static final Logger log = LoggerFactory.getLogger(BeanPropRowMapper.class);
-
 	
 	private List<ViewField> fieldList;
 	//Collector

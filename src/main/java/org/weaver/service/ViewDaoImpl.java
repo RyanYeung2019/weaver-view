@@ -7,7 +7,6 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -52,8 +51,6 @@ import org.weaver.table.entity.PrimaryKeyEn;
 import org.weaver.table.entity.TableEn;
 import org.weaver.table.entity.TableFK;
 import org.weaver.view.util.FormatterUtils;
-
-import jdk.internal.org.objectweb.asm.Type;
 
 /**
  *

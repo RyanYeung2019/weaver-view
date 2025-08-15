@@ -6,14 +6,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import javax.sql.DataSource;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Component;
 import org.weaver.query.entity.RequestConfig;
@@ -21,7 +16,6 @@ import org.weaver.table.entity.FieldEn;
 import org.weaver.table.entity.PrimaryKeyEn;
 import org.weaver.table.entity.TableEn;
 import org.weaver.view.util.Utils;
-
 import com.alibaba.fastjson.JSONObject;
 
 /**
@@ -37,9 +31,6 @@ public class TableServiceImpl implements TableService {
 
 	@Autowired
 	ViewDao queryDao;
-	
-	@Autowired
-	private ApplicationContext applicationContext;	
 	
 	@SuppressWarnings("unchecked")
 	public <T> List<T> listTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig, String... whereFields) {
