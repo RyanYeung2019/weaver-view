@@ -531,7 +531,6 @@ public class ViewDaoImpl implements ViewDao {
                     });
                 }
                 tableEn.setIndexEns(indexEns);
-
                 //Import foreign key
                 try(ResultSet impkey = dbMeta.getImportedKeys(catalog, database, tableName)){
                 	List<ForeignKeyEn> foreignKeyEns = new ArrayList<>();
@@ -560,12 +559,9 @@ public class ViewDaoImpl implements ViewDao {
                     }
                     tableEn.setForeignKeyEns(foreignKeyEns);
                 }
-                
                 try(ResultSet columns = dbMeta.getColumns(catalog, database, tableName, null)){
                 	List<FieldEn> fieldEns = new ArrayList<>();
-                	Map<String,FieldEn> fieldEnMap = tableEn.getFieldEnMap();
                     while(columns.next()){
-                    	
                         String colName = columns.getString("COLUMN_NAME");
                         String fieldLabel = columns.getString("REMARKS");
                         String isAutoIncrement = columns.getString("IS_AUTOINCREMENT");
@@ -574,30 +570,21 @@ public class ViewDaoImpl implements ViewDao {
 						Integer scale = columns.getInt("DECIMAL_DIGITS");
 						String isNullable = columns.getString("IS_NULLABLE");
 						String defaultValue = columns.getString("COLUMN_DEF");
-                        int sqlType = columns.getInt("DATA_TYPE");
                         String fieldId = FormatterUtils.toCamelCase(colName);
-                        
                         FieldEn genDataFieldEn = new FieldEn(fieldId);
-                        genDataFieldEn.setType(FormatterUtils.convertSqlType(colName, sqlType));
                         genDataFieldEn.setRemark(StringUtils.hasText(fieldLabel)?fieldLabel:null);
                         genDataFieldEn.setFieldDb(colName);
                         genDataFieldEn.setAutoInc("YES".equals(isAutoIncrement));
 						genDataFieldEn.setNullable("YES".equals(isNullable));
-                        genDataFieldEn.setSqlType(sqlType);
                         genDataFieldEn.setTypeDb(typeDb);
-                        //genDataFieldEn.setTypeJava(type);
                         genDataFieldEn.setPreci(precision);
 						genDataFieldEn.setScale(scale);
 						genDataFieldEn.setDefaultValue(defaultValue);
-                        
                         fieldEns.add(genDataFieldEn);
-                        fieldEnMap.put(fieldId, genDataFieldEn);
                     }
                     tableEn.setFieldEns(fieldEns);
-                    tableEn.setFieldEnMap(fieldEnMap);
                 }                
-            }			
-			
+            }	
 		}
 		catch (SQLException ex) {
 			JdbcUtils.closeStatement(stmt);
@@ -609,7 +596,23 @@ public class ViewDaoImpl implements ViewDao {
 		finally {
 			JdbcUtils.closeStatement(stmt);
 			DataSourceUtils.releaseConnection(conn, dataSource);
-		}		
+		}
+		//这种方式获取类型更加准确，发现sqlite用这种方式才能获取日期型
+		Map<String, Object> critParams = new HashMap<String, Object>();
+		List<ViewField> viewFields = listFieldType(dataSourreBeanName,  "select * from " + table + " where 1=2", critParams);
+		List<FieldEn> tableFields = tableEn.getFieldEns();
+    	Map<String,FieldEn> fieldEnMap = tableEn.getFieldEnMap();
+		for(FieldEn tableField:tableFields) {
+			for(ViewField viewField:viewFields) {
+				if(tableField.getFieldDb().equals(viewField.getFieldDb())) {
+					tableField.setSqlType(viewField.getSqlType());
+					tableField.setType(viewField.getType());
+				}
+			}
+			fieldEnMap.put(tableField.getField(), tableField);
+        }
+        tableEn.setFieldEns(tableFields);
+        tableEn.setFieldEnMap(fieldEnMap);
     	CacheUtils.cacheTableMap.put(cacheKey,tableEn);
     	return tableEn;
 	}	
