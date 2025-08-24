@@ -24,7 +24,7 @@
     </licenses>
     <groupId>io.github.ryanyeung2019</groupId>
     <artifactId>weaver-view</artifactId>
-    <version>2.1.18</version>
+    <version>2.1.19</version>
     <scm>
         <connection>scm:git:git://github.com/RyanYeung2019/weaver-view.git</connection>
         <developerConnection>scm:git:ssh://git@github.com:RyanYeung2019/weaver-view.git</developerConnection>
@@ -53,6 +53,7 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
+            <version>1.2.13</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -71,6 +72,7 @@
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
+            <version>2.4</version>
         </dependency>
     </dependencies>
     <build>
