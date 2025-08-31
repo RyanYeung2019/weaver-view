@@ -66,9 +66,6 @@ public class ViewQueryImpl implements ViewQuery {
 		viewStatement.setViewId(view);
 		return viewStatement;
 	}
-
-	
-
 	
 	public ViewStatement prepareView(String view,
 			String[] sort,
@@ -80,7 +77,6 @@ public class ViewQueryImpl implements ViewQuery {
 		SortByField[] sortField = ParamUtils.sortFieldConver(sort);
 		QueryFilter queryFilter = ParamUtils.filterConver(filter);
 		List<String> aggrList = ParamUtils.aggrConver(aggrs);
-
 		ViewStatement statement = prepareView(view);
 		statement.setSortField(sortField);
 		statement.setPageNum(pageNum);
@@ -98,8 +94,6 @@ public class ViewQueryImpl implements ViewQuery {
 	
 	public ViewStatement prepareTable(String tableName) {
 		ViewStatement statement = new ViewStatementImpl(viewService);
-		String sql = "select * from "+tableName;
-		statement.setSql(sql);
 		statement.setTableId(tableName);
 		return statement;
 	} 

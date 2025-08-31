@@ -13,13 +13,14 @@ public class IndexFieldEn implements Serializable {
 	private static final long serialVersionUID = 4830200132891207246L;
 
 	private String field;
-	private String dbField;
+	private String fieldDb;
+	private String fieldDbSql;
     private Integer sortField;
 
-	public IndexFieldEn(String field,String dbField) {
+	public IndexFieldEn(String field,String fieldDb) {
 		super();
 		this.field = field;
-		this.dbField = dbField;
+		this.fieldDb = fieldDb;
 	}
 
 	public String getField() {
@@ -30,12 +31,21 @@ public class IndexFieldEn implements Serializable {
 		this.field = field;
 	}
 
-	public String getDbField() {
-		return dbField;
+	public String getFieldDb() {
+		return fieldDb;
 	}
 
-	public void setDbField(String dbField) {
-		this.dbField = dbField;
+	public void setFieldDb(String fieldDb) {
+		this.fieldDb = fieldDb;
+	}
+
+	
+	public String getFieldDbSql() {
+		return fieldDbSql;
+	}
+
+	public void setFieldDbSql(String fieldDbSql) {
+		this.fieldDbSql = fieldDbSql;
 	}
 
 	public Integer getSortField() {

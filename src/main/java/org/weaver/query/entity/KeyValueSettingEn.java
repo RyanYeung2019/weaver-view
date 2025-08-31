@@ -12,6 +12,8 @@ public class KeyValueSettingEn {
 
 	String dataSourceName;
 
+	String sourceType;// 数据源类型
+
 	String table;
 
 	String key;
@@ -100,6 +102,14 @@ public class KeyValueSettingEn {
 
 	public void setDataSourceName(String dataSourceName) {
 		this.dataSourceName = dataSourceName;
+	}
+	
+	public String getSourceType() {
+		return sourceType;
+	}
+
+	public void setSourceType(String sourceType) {
+		this.sourceType = sourceType;
 	}
 
 	public String getTable() {

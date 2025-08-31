@@ -16,6 +16,8 @@ public class FieldEn  implements Serializable {
 	private String field; // CamelCase Field Style
 
 	private String fieldDb; // Database Field Style
+	
+	private String fieldDbSql; 
 
 	private Boolean nullable;
 
@@ -136,6 +138,14 @@ public class FieldEn  implements Serializable {
 
 	public void setDefaultValue(String defaultValue) {
 		this.defaultValue = defaultValue;
+	}
+
+	public String getFieldDbSql() {
+		return fieldDbSql;
+	}
+
+	public void setFieldDbSql(String fieldDbSql) {
+		this.fieldDbSql = fieldDbSql;
 	}
 
 	@Override

@@ -14,12 +14,13 @@ public class PrimaryKeyEn implements Serializable {
 
 	private String field;
 	private Integer sortField;
-	private String dbField;
+	private String fieldDb;
+	private String fieldDbSql;
 
-	public PrimaryKeyEn(String field,String dbField) {
+	public PrimaryKeyEn(String field,String fieldDb) {
 		super();
 		this.field = field;
-		this.dbField = dbField;
+		this.fieldDb = fieldDb;
 
 	}
 
@@ -28,14 +29,20 @@ public class PrimaryKeyEn implements Serializable {
 	}
 
 
-
-
-	public String getDbField() {
-		return dbField;
+	public String getFieldDb() {
+		return fieldDb;
 	}
 
-	public void setDbField(String dbField) {
-		this.dbField = dbField;
+	public void setFieldDb(String fieldDb) {
+		this.fieldDb = fieldDb;
+	}
+
+	public String getFieldDbSql() {
+		return fieldDbSql;
+	}
+
+	public void setFieldDbSql(String fieldDbSql) {
+		this.fieldDbSql = fieldDbSql;
 	}
 
 	public void setField(String field) {
@@ -79,8 +86,11 @@ public class PrimaryKeyEn implements Serializable {
 
 	@Override
 	public String toString() {
-		return "PrimaryKeyEn [field=" + field + ", sortField=" + sortField + ", dbField=" + dbField + "]";
+		return "PrimaryKeyEn [field=" + field + ", sortField=" + sortField + ", fieldDb=" + fieldDb + ", fieldDbSql="
+				+ fieldDbSql + "]";
 	}
+
+
 
 
 

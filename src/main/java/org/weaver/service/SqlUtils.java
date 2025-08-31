@@ -202,7 +202,7 @@ class SqlUtils {
 		if (field == null) {
 			throw new RuntimeException("adv sch field not exists:" + field);
 		}
-		String fieldStr = NAME_MYSQL.equals(dataSourceType) ? field : "\"" + field + "\"";
+		String fieldStr = sqlDbKeyWordEscape(field,dataSourceType);
 		if (operation.equalsIgnoreCase(QueryCriteria.OP_IS_EMPTY)) {
 			if (filterCriteria.getNot()) {
 				filterCriteria.setDbSql(fieldStr + " is not null");
@@ -262,5 +262,12 @@ class SqlUtils {
 			filterCriteria.setDbKey(id);
 		}
 	}
-
+	
+	public static String sqlDbKeyWordEscape(String keyWord,String sourceType) {
+		if(SqlUtils.NAME_MYSQL.equals(sourceType)) {
+			return "`"+keyWord+"`";
+		}else {
+			return "\""+keyWord+"\"";
+		}
+	}
 }

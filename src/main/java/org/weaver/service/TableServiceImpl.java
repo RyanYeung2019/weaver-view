@@ -48,7 +48,7 @@ public class TableServiceImpl implements TableService {
 				if(fieldEn!=null && item.get(field)!=null) {
 					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig,tableEn.getSourceType());
 					item.put(field, value);
-					if(keys.stream().anyMatch(e->e.getDbField().equals(fieldEn.getFieldDb()))) {
+					if(keys.stream().anyMatch(e->e.getFieldDb().equals(fieldEn.getFieldDb()))) {
 						if(!firstKey) {
 							whereKey.append(" and ");
 						}
@@ -59,7 +59,8 @@ public class TableServiceImpl implements TableService {
 				}
 			}
 			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
-			String sql = "select * from "+tableName+" where "+whereKey;
+			
+			String sql = "select * from "+tableEn.getTableNameSql()+" where "+whereKey;
 			return(List<T>) queryDao.listData(dataSourceName,values.toArray(), sql);
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
@@ -82,7 +83,7 @@ public class TableServiceImpl implements TableService {
 		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
 		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
 		String[] keyFields = keys.stream()
-                .map(PrimaryKeyEn::getDbField)
+                .map(PrimaryKeyEn::getFieldDb)
                 .toArray(String[]::new);
 		if(data instanceof LinkedHashMap) {
 			@SuppressWarnings("unchecked")
@@ -138,7 +139,7 @@ public class TableServiceImpl implements TableService {
 		if(dataForInsert.size()>0) {
 			List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
 			List<String> keyFields = keys.stream ()
-					.map (PrimaryKeyEn::getDbField)
+					.map (PrimaryKeyEn::getFieldDb)
 					.collect (Collectors.toList ());
 			MapSqlParameterSource item = dataForInsert.get(0);
 			StringBuffer fields = new StringBuffer();
@@ -156,7 +157,7 @@ public class TableServiceImpl implements TableService {
 						values.append(",");
 					}
 					first = false;
-					fields.append(fieldEn.getFieldDb());
+					fields.append(fieldEn.getFieldDbSql());
 					values.append(":"+fieldEn.getField());
 					if(keyFields.size()>0 ) {
 						if(keyFields.contains(fieldEn.getFieldDb())) {
@@ -175,14 +176,14 @@ public class TableServiceImpl implements TableService {
 					}
 				}
 			}
-			String sql = "INSERT INTO "+tableName+"("+fields+")VALUES("+values+")";
+			String sql = "INSERT INTO "+tableEn.getTableNameSql()+"("+fields+")VALUES("+values+")";
 			if(keyFields.size()>0) {
 				if (tableEn.getSourceType().equals(SqlUtils.NAME_MYSQL)) {
-					sql = "INSERT INTO "+tableName+"("+fields+")VALUES("+values+")ON DUPLICATE KEY UPDATE "+upValues;
+					sql = "INSERT INTO "+tableEn.getTableNameSql()+"("+fields+")VALUES("+values+")ON DUPLICATE KEY UPDATE "+upValues;
 				} else if (tableEn.getSourceType().equals(SqlUtils.NAME_PGSQL)) {
-					sql = "INSERT INTO "+tableName+"("+fields+")VALUES("+values+")ON CONFLICT ("+keysString+") DO UPDATE SET "+upValues;
+					sql = "INSERT INTO "+tableEn.getTableNameSql()+"("+fields+")VALUES("+values+")ON CONFLICT ("+keysString+") DO UPDATE SET "+upValues;
 				} else if (tableEn.getSourceType().equals(SqlUtils.NAME_SQLITE)) {
-					sql = "INSERT OR REPLACE INTO "+tableName+"("+fields+")VALUES("+values+")";
+					sql = "INSERT OR REPLACE INTO "+tableEn.getTableNameSql()+"("+fields+")VALUES("+values+")";
 				}
 			}
 			result = queryDao.executeSqlBatch(dataSourceName,dataForInsert,sql);
@@ -211,11 +212,11 @@ public class TableServiceImpl implements TableService {
 						values.append(",");
 					}
 					first = false;
-					fields.append(fieldEn.getFieldDb());
+					fields.append(fieldEn.getFieldDbSql());
 					values.append(":"+fieldEn.getField());
 				}
 			}
-			String sql = "insert into "+tableName+"("+fields+")VALUES("+values+")";
+			String sql = "insert into "+tableEn.getTableNameSql()+"("+fields+")VALUES("+values+")";
 			result = queryDao.executeInsert(dataSourceName, item, sql, autoIncEn); 
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
@@ -245,20 +246,20 @@ public class TableServiceImpl implements TableService {
 						if(!firstKey) {
 							upKeys.append(" and ");
 						}
-						upKeys.append(fieldEn.getFieldDb() + "=:"+fieldEn.getField() );
+						upKeys.append(fieldEn.getFieldDbSql() + "=:"+fieldEn.getField() );
 						firstKey = false;
 					}else {
 						if(!firstVal) {
 							upValues.append(",");
 						}
-						upValues.append(fieldEn.getFieldDb() + "=:"+fieldEn.getField() );
+						upValues.append(fieldEn.getFieldDbSql() + "=:"+fieldEn.getField() );
 						firstVal = false;
 					}
 				}
 			}
 			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
-			String sql = "update "+tableName+" set "+upValues+" where "+upKeys;
-			String checkSql = "select count(*)from "+tableName+" where "+upKeys;
+			String sql = "update "+tableEn.getTableNameSql()+" set "+upValues+" where "+upKeys;
+			String checkSql = "select count(*)from "+tableEn.getTableNameSql()+" where "+upKeys;
 			result = queryDao.executeUpdate(dataSourceName, item, sql, checkSql,assertMaxRecordAffected); 
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
@@ -295,14 +296,14 @@ public class TableServiceImpl implements TableService {
 						if(!firstKey) {
 							delKeys.append(" and ");
 						}
-						delKeys.append(fieldEn.getFieldDb() + "=:"+fieldEn.getField() );
+						delKeys.append(fieldEn.getFieldDbSql() + "=:"+fieldEn.getField() );
 						firstKey = false;
 					}
 				}
 			}
 			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
-			String sql = "delete from "+tableName+" where "+delKeys;
-			String checkSql = "select count(*) from "+tableName+" where "+delKeys;
+			String sql = "delete from "+tableEn.getTableNameSql()+" where "+delKeys;
+			String checkSql = "select count(*) from "+tableEn.getTableNameSql()+" where "+delKeys;
 			result = queryDao.executeUpdate(dataSourceName, item, sql, checkSql,assertMaxRecordAffected); 
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);

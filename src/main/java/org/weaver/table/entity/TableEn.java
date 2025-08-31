@@ -17,6 +17,7 @@ public class TableEn implements Serializable {
 
 	private String tableId;
     private String tableName;
+    private String tableNameSql;
     private String tableDesc;
     private Integer sortField;
     private List<FieldEn> fieldEns;
@@ -27,7 +28,8 @@ public class TableEn implements Serializable {
     private String remark;
 	private String sourceType;// 数据源类型
 	private String dataSource;// 使用的数据源
-
+	private String sql;
+	
     public TableEn(String tableId) {
 		super();
 		this.tableId = tableId;
@@ -72,6 +74,13 @@ public class TableEn implements Serializable {
 		this.fieldEns = fieldEns;
 	}
 
+	public String getTableNameSql() {
+		return tableNameSql;
+	}
+
+	public void setTableNameSql(String tableNameSql) {
+		this.tableNameSql = tableNameSql;
+	}
 
 	public Map<String, FieldEn> getFieldEnMap() {
 		return fieldEnMap;
@@ -129,10 +138,23 @@ public class TableEn implements Serializable {
 		this.dataSource = dataSource;
 	}
 
+	public String getSql() {
+		return sql;
+	}
+
+	public void setSql(String sql) {
+		this.sql = sql;
+	}
+
+
+
 	@Override
 	public String toString() {
-		return "TableEn [tableId=" + tableId + ", tableName=" + tableName + ", tableDesc=" + tableDesc + ", sortField="
-				+ sortField + "]";
+		return "TableEn [tableId=" + tableId + ", tableName=" + tableName + ", tableNameSql=" + tableNameSql
+				+ ", tableDesc=" + tableDesc + ", sortField=" + sortField + ", fieldEns=" + fieldEns + ", fieldEnMap="
+				+ fieldEnMap + ", primaryKeyEns=" + primaryKeyEns + ", foreignKeyEns=" + foreignKeyEns + ", indexEns="
+				+ indexEns + ", remark=" + remark + ", sourceType=" + sourceType + ", dataSource=" + dataSource
+				+ ", sql=" + sql + "]";
 	}
 
 	@Override

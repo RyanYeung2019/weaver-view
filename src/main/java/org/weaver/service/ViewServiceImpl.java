@@ -309,6 +309,7 @@ public class ViewServiceImpl implements ViewService {
 			viewEn = new ViewEn();
 			List<ViewField> listFields = new ArrayList<>();
 			TableEn tableEn = queryDao.getTableInfo(dataSource, tableId);
+			Map<String, ViewField> fieldMap = new HashMap<>();
 			for(FieldEn fieldEn:tableEn.getFieldEns()) {
 				ViewField viewField = new ViewField(fieldEn.getField());
 				viewField.setFieldDb(fieldEn.getFieldDb());
@@ -321,19 +322,22 @@ public class ViewServiceImpl implements ViewService {
 				viewField.setNullable(fieldEn.getNullable());
 				viewField.setRemark(fieldEn.getRemark());
 				listFields.add(viewField);
+				fieldMap.put(viewField.getField(), viewField);
 			}
+			viewEn.setFieldMap(fieldMap);
+			viewEn.setSql(tableEn.getSql());
 			viewEn.setListFields(listFields);
-			viewEn.setDataSource(dataSource);
 			viewEn.setSourceType(tableEn.getSourceType());
 			viewEn.setRemark(tableEn.getRemark());
 		}else {
 			viewEn = queryDao.getViewInfo(dataSource, sql, critParams);
+			Map<String, ViewField> fieldMap = new HashMap<>();
+			for (ViewField viewField : viewEn.getListFields()) {
+				fieldMap.put(viewField.getField(), viewField);
+			}
+			viewEn.setFieldMap(fieldMap);
+			viewEn.setSql(sql);
 		}
-		Map<String, ViewField> fieldMap = new HashMap<>();
-		for (ViewField viewField : viewEn.getListFields()) {
-			fieldMap.put(viewField.getField(), viewField);
-		}
-		
 		LinkedHashMap<String,String> paramMap = new LinkedHashMap<>();
 		if(critParams!=null) {
 			for(String param:critParams.keySet()) {
@@ -342,11 +346,9 @@ public class ViewServiceImpl implements ViewService {
 				paramMap.put(param, type);
 			}
 		}
-		viewEn.setFieldMap(fieldMap);
 		viewEn.setViewId(viewKey);
 		viewEn.setParam(paramMap);
 		viewEn.setDataSource(dataSource);
-		viewEn.setSql(sql);
 		viewDefine.putView(viewKey, viewEn);
 		return viewEn;
 	}

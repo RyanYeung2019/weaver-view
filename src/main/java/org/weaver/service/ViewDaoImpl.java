@@ -117,16 +117,20 @@ public class ViewDaoImpl implements ViewDao {
 
 	public Map<String,Object> getKeyValueTable(KeyValueSettingEn setting,String key){
 		String dataSourreBeanName = setting.getDataSourceName();
+		if(setting.getSourceType()==null)setting.setSourceType(this.getDataType(dataSourreBeanName));
+		
 		if(setting.getTypeData()==null)setting.setTypeData(new LinkedHashMap<>());
 		setting.getTypeData().put(setting.getKey(), key);
 		String selectSql = setting.getSelectSql();
 		if(selectSql==null) {
+			Map<String,String> tableInfo = tableNameInfo(setting.getTable(),setting.getSourceType());
+			String tableNameSql = tableInfo.get("tableNameSql");
 			StringBuffer sql = new StringBuffer("select ");
 			sql.append("*");
 			sql.append(" from ");
-			sql.append(setting.getTable().replace("'","''"));
+			sql.append(tableNameSql.replace("'","''"));
 			sql.append(" where ");
-			sql.append(setting.getTypeData().keySet().stream().map(s->s+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
+			sql.append(setting.getTypeData().keySet().stream().map(s->SqlUtils.sqlDbKeyWordEscape(s,setting.getSourceType())+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
 			selectSql = sql.toString();
 			setting.setSelectSql(selectSql);
 		}
@@ -145,18 +149,21 @@ public class ViewDaoImpl implements ViewDao {
 	
 	public int updateKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data){
 		String dataSourreBeanName = setting.getDataSourceName();
+		if(setting.getSourceType()==null)setting.setSourceType(this.getDataType(dataSourreBeanName));
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
 		if(setting.getTypeData()==null)setting.setTypeData(new LinkedHashMap<>());
 		setting.getTypeData().put(setting.getKey(), key);
 		String updateSql = setting.getUpdateSql();
 		if(updateSql==null) {
+			Map<String,String> tableInfo = tableNameInfo(setting.getTable(),setting.getSourceType());
+			String tableNameSql = tableInfo.get("tableNameSql");
 			StringBuffer sql = new StringBuffer("update ");
-			sql.append(setting.getTable().replace("'","''"));
+			sql.append(tableNameSql.replace("'","''"));
 			sql.append(" set ");
-			sql.append(data.keySet().stream().map(s->s+"=? ").collect(Collectors.joining(",")).replace("'","''"));
+			sql.append(data.keySet().stream().map(s->SqlUtils.sqlDbKeyWordEscape(s,setting.getSourceType())+"=? ").collect(Collectors.joining(",")).replace("'","''"));
 			sql.append(" where ");
-			sql.append(setting.getTypeData().keySet().stream().map(s->s+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
+			sql.append(setting.getTypeData().keySet().stream().map(s->SqlUtils.sqlDbKeyWordEscape(s,setting.getSourceType())+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
 			updateSql = sql.toString();
 			setting.setUpdateSql(updateSql);
 		}
@@ -167,17 +174,20 @@ public class ViewDaoImpl implements ViewDao {
 	
 	public int insertKeyValueTable(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data){
 		String dataSourreBeanName = setting.getDataSourceName();
+		if(setting.getSourceType()==null)setting.setSourceType(this.getDataType(dataSourreBeanName));
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName==null?"dataSource":dataSourreBeanName, DataSource.class);
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
 		if(setting.getTypeData()==null)setting.setTypeData(new LinkedHashMap<>());
 		setting.getTypeData().put(setting.getKey(), key);
 		String insertSql = setting.getInsertSql();
 		if(insertSql==null) {
+			Map<String,String> tableInfo = tableNameInfo(setting.getTable(),setting.getSourceType());
+			String tableNameSql = tableInfo.get("tableNameSql");
 			StringBuffer sql = new StringBuffer("insert into ");
-			sql.append(setting.getTable().replace("'","''"));
+			sql.append(tableNameSql.replace("'","''"));
 			sql.append("(");
-			sql.append(String.join(",", setting.getTypeData().keySet()).replace("'","''")+",");
-			sql.append(String.join(",", data.keySet()).replace("'","''"));
+			sql.append(setting.getTypeData().keySet().stream().map(s->SqlUtils.sqlDbKeyWordEscape(s,setting.getSourceType())).collect(Collectors.joining(",")).replace("'","''")+","); 
+			sql.append(data.keySet().stream().map(s->SqlUtils.sqlDbKeyWordEscape(s,setting.getSourceType())).collect(Collectors.joining(",")).replace("'","''")); 
 			sql.append(")values(");
 			sql.append(setting.getTypeData().keySet().stream().map(s->"?").collect(Collectors.joining(","))+",");
 			sql.append(data.keySet().stream().map(s->"?").collect(Collectors.joining(",")));
@@ -387,13 +397,8 @@ public class ViewDaoImpl implements ViewDao {
 					}
 					field = fieldList.get(idx).getFieldDb();
 				}
-				if (!firstLoop)
-					orderBySb.append(",");
-				if (SqlUtils.NAME_MYSQL.equals(viewEn.getSourceType())) {
-					orderBySb.append("" + field + " " + sort.getType());
-				} else {
-					orderBySb.append("\"" + field + "\" " + sort.getType());
-				}
+				if (!firstLoop) orderBySb.append(",");
+				orderBySb.append(SqlUtils.sqlDbKeyWordEscape(field,viewEn.getSourceType()) + " " + sort.getType());
 				firstLoop = false;
 			}
 			orderBy = orderBySb.toString();
@@ -440,6 +445,29 @@ public class ViewDaoImpl implements ViewDao {
 		return viewEn;
 	}
 	
+	private Map<String,String> tableNameInfo(String table,String sourceType){
+		String[] tableArray = table.split("[.]");
+		String tableName = null;
+		String catalog = null;
+		if(tableArray.length==1) {
+    		tableName = tableArray[0];
+		}else {
+			catalog = tableArray[0];
+    		tableName = tableArray[1];
+		}
+        String tableNameSql = (
+        		catalog==null?"":(
+        				SqlUtils.sqlDbKeyWordEscape(catalog,sourceType)+"." 
+        				)
+        		) + SqlUtils.sqlDbKeyWordEscape(tableName,sourceType);
+		Map<String,String> result = new HashMap<>();
+		result.put("catalog", catalog);	
+		result.put("tableName", tableName);	
+		result.put("tableNameSql", tableNameSql);
+		return result;
+	}
+	
+	
 	public TableEn getTableInfo(String dataSourreBeanName,String table) {
 		String dsName = dataSourreBeanName==null?"dataSource":dataSourreBeanName;
 		String cacheKey = dsName+"|"+table;
@@ -452,20 +480,16 @@ public class ViewDaoImpl implements ViewDao {
 		tableForeig.put(tableEn.getTableId(), new ArrayList<>());
 		DataSource dataSource = this.applicationContext.getBean(dsName, DataSource.class);
 		Connection conn = DataSourceUtils.getConnection(dataSource);
+
+		Map<String,String> tableInfo = tableNameInfo(table,tableEn.getSourceType());
+		String tableName = tableInfo.get("tableName");
+		String catalog = tableInfo.get("catalog");
+		
 		Statement stmt = null;
 		try {
 			stmt = conn.createStatement();
     		DatabaseMetaData dbMeta = conn.getMetaData();
-    		String[] tableArray = table.split("[.]");
-    		String catalog = conn.getCatalog();
     		String database = null;
-    		String tableName = null;
-    		if(tableArray.length==1) {
-        		tableName = tableArray[0];
-    		}else {
-    			catalog = tableArray[0];
-        		tableName = tableArray[1];
-    		}
         	List<String> pk = new ArrayList<>();
         	try(ResultSet tableList = dbMeta.getTables(catalog, database,tableName,null)){
                 while(tableList.next()){
@@ -479,11 +503,11 @@ public class ViewDaoImpl implements ViewDao {
             try(ResultSet keys = dbMeta.getPrimaryKeys(catalog, database,tableName)){
             	List<PrimaryKeyEn> primaryKeyEns = new ArrayList<>();
                 while(keys.next()){
-                    String dbField = keys.getString("COLUMN_NAME");
+                    String fieldDb = keys.getString("COLUMN_NAME");
                     int keySeq = keys.getInt("KEY_SEQ");
                     pk.add(keys.getString("pk_name"));
-                    String field = FormatterUtils.toCamelCase(dbField.toLowerCase());
-                    PrimaryKeyEn genDataPkEn = new PrimaryKeyEn(field,dbField);
+                    String field = FormatterUtils.toCamelCase(fieldDb.toLowerCase());
+                    PrimaryKeyEn genDataPkEn = new PrimaryKeyEn(field,fieldDb);
                     genDataPkEn.setSortField(Integer.valueOf(keySeq));
                     primaryKeyEns.add(genDataPkEn);
                 }
@@ -597,9 +621,12 @@ public class ViewDaoImpl implements ViewDao {
 			JdbcUtils.closeStatement(stmt);
 			DataSourceUtils.releaseConnection(conn, dataSource);
 		}
+        String tableNameSql = tableInfo.get("tableNameSql");
+		String sql = "select * from " + tableNameSql;
+		tableEn.setSql(sql);
 		//这种方式获取类型更加准确，发现sqlite用这种方式才能获取日期型
 		Map<String, Object> critParams = new HashMap<String, Object>();
-		List<ViewField> viewFields = listFieldType(dataSourreBeanName,  "select * from " + table + " where 1=2", critParams);
+		List<ViewField> viewFields = listFieldType(dataSourreBeanName, sql  + " where 1=2", critParams);
 		List<FieldEn> tableFields = tableEn.getFieldEns();
     	Map<String,FieldEn> fieldEnMap = tableEn.getFieldEnMap();
 		for(FieldEn tableField:tableFields) {
@@ -607,12 +634,14 @@ public class ViewDaoImpl implements ViewDao {
 				if(tableField.getFieldDb().equals(viewField.getFieldDb())) {
 					tableField.setSqlType(viewField.getSqlType());
 					tableField.setType(viewField.getType());
+					tableField.setFieldDbSql(SqlUtils.sqlDbKeyWordEscape(tableField.getFieldDb(),tableEn.getSourceType()).replace("'", "''"));
 				}
 			}
 			fieldEnMap.put(tableField.getField(), tableField);
         }
         tableEn.setFieldEns(tableFields);
         tableEn.setFieldEnMap(fieldEnMap);
+        tableEn.setTableNameSql(tableNameSql);
     	CacheUtils.cacheTableMap.put(cacheKey,tableEn);
     	return tableEn;
 	}	
@@ -678,5 +707,6 @@ public class ViewDaoImpl implements ViewDao {
 		return listFields;
 	}	
 	
+
 	
 }

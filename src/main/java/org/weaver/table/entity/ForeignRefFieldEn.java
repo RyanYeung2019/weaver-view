@@ -13,16 +13,17 @@ public class ForeignRefFieldEn  implements Serializable {
 	private static final long serialVersionUID = -7142265875163373676L;
 
 	private String field;
-	private String dbField;
+	private String fieldDb;
+	private String fieldDbSql;
     private String refTable;
     private String refField;
-    private String refDbField;
+    private String refFieldDb;
     private Integer sortField;
 
-	public ForeignRefFieldEn(String field,String dbField) {
+	public ForeignRefFieldEn(String field,String fieldDb) {
 		super();
 		this.field = field;
-		this.dbField = dbField;
+		this.fieldDb = fieldDb;
 	}
 
 	public String getField() {
@@ -45,9 +46,9 @@ public class ForeignRefFieldEn  implements Serializable {
 		return refField;
 	}
 
-	public void setRefField(String refField,String refDbField) {
+	public void setRefField(String refField,String refFieldDb) {
 		this.refField = refField;
-		this.refDbField = refDbField;
+		this.refFieldDb = refFieldDb;
 	}
 
 	public Integer getSortField() {
@@ -58,29 +59,31 @@ public class ForeignRefFieldEn  implements Serializable {
 		this.sortField = sortField;
 	}
 
-	public String getDbField() {
-		return dbField;
+
+	public String getFieldDb() {
+		return fieldDb;
+	}
+
+	public void setFieldDb(String fieldDb) {
+		this.fieldDb = fieldDb;
+	}
+
+	public String getFieldDbSql() {
+		return fieldDbSql;
+	}
+
+	public void setFieldDbSql(String fieldDbSql) {
+		this.fieldDbSql = fieldDbSql;
 	}
 
 
-
-	public void setDbField(String dbField) {
-		this.dbField = dbField;
+	public String getRefFieldDb() {
+		return refFieldDb;
 	}
 
-
-
-	public String getRefDbField() {
-		return refDbField;
+	public void setRefFieldDb(String refFieldDb) {
+		this.refFieldDb = refFieldDb;
 	}
-
-
-
-	public void setRefDbField(String refDbField) {
-		this.refDbField = refDbField;
-	}
-
-
 
 	@Override
 	public String toString() {
