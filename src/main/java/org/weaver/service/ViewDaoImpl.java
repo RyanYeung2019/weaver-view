@@ -337,7 +337,7 @@ public class ViewDaoImpl implements ViewDao {
 			queryString = "SELECT * FROM(SELECT rownum rnum,a.* FROM(" + sql + " ORDER BY " + orderBy
 					+ ")a WHERE rownum<=" + offset + "+" + limit + ")WHERE rnum>=" + (offset + 1);
 		} else {
-			queryString = sql + " ORDER BY " + orderBy + " LIMIT " + limit + " OFFSET " + offset;
+			queryString = "SELECT * FROM("+sql+")"+SqlUtils.varName()+" ORDER BY " + orderBy + " LIMIT " + limit + " OFFSET " + offset;
 		}
 		log.debug("sql:\n" + queryString);
 		long startTotal = (new Date()).getTime();
@@ -436,11 +436,11 @@ public class ViewDaoImpl implements ViewDao {
 
 	public ViewEn getViewInfo(String dataSource, String sql,Map<String, Object> critParams) {
 		String dataSourceName = dataSource==null?"dataSource":dataSource;
+		String sourceType = getDataType(dataSourceName);
 		ViewEn viewEn = new ViewEn();
-		List<ViewField> listFields = listFieldType(dataSourceName, sql, critParams);
+		List<ViewField> listFields = listFieldType(dataSourceName,sourceType, sql, critParams);
 		viewEn.setListFields(listFields);
 		viewEn.setDataSource(dataSourceName);
-		String sourceType = getDataType(dataSourceName);
 		viewEn.setSourceType(sourceType);
 		return viewEn;
 	}
@@ -475,7 +475,8 @@ public class ViewDaoImpl implements ViewDao {
 		if(tableEn!=null) return tableEn;
 		tableEn = new TableEn(table);
 		tableEn.setDataSource(dsName);
-		tableEn.setSourceType(this.getDataType(dsName));
+		String sourceType = this.getDataType(dsName);
+		tableEn.setSourceType(sourceType);
 		final Map<String,List<TableFK>> tableForeig = new HashMap<>();
 		tableForeig.put(tableEn.getTableId(), new ArrayList<>());
 		DataSource dataSource = this.applicationContext.getBean(dsName, DataSource.class);
@@ -626,7 +627,7 @@ public class ViewDaoImpl implements ViewDao {
 		tableEn.setSql(sql);
 		//这种方式获取类型更加准确，发现sqlite用这种方式才能获取日期型
 		Map<String, Object> critParams = new HashMap<String, Object>();
-		List<ViewField> viewFields = listFieldType(dataSourreBeanName, sql  + " where 1=2", critParams);
+		List<ViewField> viewFields = listFieldType(dataSourreBeanName,sourceType, sql  + " where 1=2", critParams);
 		List<FieldEn> tableFields = tableEn.getFieldEns();
     	Map<String,FieldEn> fieldEnMap = tableEn.getFieldEnMap();
 		for(FieldEn tableField:tableFields) {
@@ -646,7 +647,7 @@ public class ViewDaoImpl implements ViewDao {
     	return tableEn;
 	}	
 	
-	private List<ViewField> listFieldType(String dataSourceName, String queryStr,
+	private List<ViewField> listFieldType(String dataSourceName,String sourceType, String queryStr,
 			Map<String, Object> critParams) {
 		Object[] params = NamedParameterUtils.buildValueArray(queryStr, critParams);
 		String sql = NamedParameterUtils.parseSqlStatementIntoString(queryStr);
@@ -656,7 +657,11 @@ public class ViewDaoImpl implements ViewDao {
 		Connection conn = DataSourceUtils.getConnection(dataSource);
 		PreparedStatement psIns = null;
 		try {
-			psIns = conn.prepareStatement(sql);
+			if (sourceType.equals(SqlUtils.NAME_ORACLE)) {
+				psIns = conn.prepareStatement("SELECT * FROM("+sql+")WHERE rownum=0");
+			} else {
+				psIns = conn.prepareStatement("SELECT * FROM("+sql+")"+SqlUtils.varName()+" LIMIT 0");
+			}
 			PreparedStatementSetter pss = new ArgumentPreparedStatementSetter(params);
 			pss.setValues(psIns);
 			List<String> checkExistsField = new ArrayList<>();
