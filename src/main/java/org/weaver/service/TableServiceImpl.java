@@ -1,20 +1,31 @@
 package org.weaver.service;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import javax.sql.DataSource;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
+import org.weaver.config.LangDefine;
 import org.weaver.query.entity.RequestConfig;
 import org.weaver.table.entity.FieldEn;
 import org.weaver.table.entity.PrimaryKeyEn;
 import org.weaver.table.entity.TableEn;
+import org.weaver.table.entity.UpdateCommand;
 import org.weaver.view.util.Utils;
 import com.alibaba.fastjson.JSONObject;
 
@@ -31,6 +42,28 @@ public class TableServiceImpl implements TableService {
 
 	@Autowired
 	ViewDao queryDao;
+	
+	@Autowired
+	LangDefine langDefine;	
+	@Autowired
+	private ApplicationContext applicationContext;
+	
+	public void setTableReqConfig(RequestConfig tableReqConfig) {
+		String lang = tableReqConfig.getLanguage();
+		SimpleDateFormat dateFormat = (SimpleDateFormat) langDefine.getSetting(lang, LangDefine.FORMAT_DATE);
+		if (dateFormat != null) {
+			tableReqConfig.setDateFormat(dateFormat);
+		}
+		SimpleDateFormat timeFormat = (SimpleDateFormat) langDefine.getSetting(lang, LangDefine.FORMAT_TIME);
+		if (timeFormat != null) {
+			tableReqConfig.setTimeFormat(timeFormat);
+		}
+		SimpleDateFormat datetimeFormat = (SimpleDateFormat) langDefine.getSetting(lang, LangDefine.FORMAT_DATETIME);
+		if (datetimeFormat != null) {
+			tableReqConfig.setDatetimeFormat(datetimeFormat);
+		}
+	}	
+	
 	
 	@SuppressWarnings("unchecked")
 	public <T> List<T> listTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig, String... whereFields) {
@@ -110,6 +143,47 @@ public class TableServiceImpl implements TableService {
 			Utils.mapToEntity(item, data);
 			return result;
 		}
+	}
+	
+	public <T> void multipleUpdateTrx(String dataSourceName,List<UpdateCommand<T>> updateCommands, RequestConfig requestConfig) {
+		String dsName = dataSourceName==null?"dataSource":dataSourceName;
+		DataSource dataSource = this.applicationContext.getBean(dsName, DataSource.class);
+		DataSourceTransactionManager transactionManager = new DataSourceTransactionManager(dataSource);
+        DefaultTransactionDefinition txDef = new DefaultTransactionDefinition();
+        txDef.setIsolationLevel(TransactionDefinition.ISOLATION_DEFAULT);
+        txDef.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
+        TransactionStatus txStatus = transactionManager.getTransaction(txDef);
+        try {
+        	for(UpdateCommand<T> updateCommand:updateCommands) {
+        		if("persisten".equals(updateCommand.getCommand())) {
+        			int[] result = this.persistenTableBatch(dataSourceName, updateCommand.getTableName(), updateCommand.getDataList(), requestConfig);
+        			updateCommand.setResult(result);
+        		}
+        		if("insert".equals(updateCommand.getCommand())) {
+        			int result = this.insertTable(dataSourceName, updateCommand.getTableName(), updateCommand.getData(), requestConfig);
+        			updateCommand.setResult(new int[]{result});
+        		}
+        		if("update".equals(updateCommand.getCommand())) {
+        			int result = this.updateTable(dataSourceName, updateCommand.getTableName(), updateCommand.getData(), requestConfig);
+        			updateCommand.setResult(new int[]{result});
+        		}
+        		if("updateBatch".equals(updateCommand.getCommand())) {
+        			int result = this.updateTableBatch(dataSourceName, updateCommand.getTableName(), updateCommand.getData(),updateCommand.getAssertMaxRecordAffected(),requestConfig,updateCommand.getWhereFields());
+        			updateCommand.setResult(new int[]{result});
+        		}
+        		if("delete".equals(updateCommand.getCommand())) {
+        			int result = this.deleteTable(dataSourceName, updateCommand.getTableName(), updateCommand.getData(), requestConfig);
+        			updateCommand.setResult(new int[]{result});
+        		}
+        		if("deleteBatch".equals(updateCommand.getCommand())) {
+        			int result = this.deleteTableBatch(dataSourceName, updateCommand.getTableName(), updateCommand.getData(),updateCommand.getAssertMaxRecordAffected(),requestConfig,updateCommand.getWhereFields());
+        			updateCommand.setResult(new int[]{result});
+        		}
+        	}
+            transactionManager.commit(txStatus);
+        } catch (Exception e) {
+            transactionManager.rollback(txStatus);
+        }
 	}
 
 	@SuppressWarnings("unchecked")

@@ -237,11 +237,9 @@ class SqlUtils {
 			} else {
 				if (val == null)
 					throw new RuntimeException(String.format("field [%s] not allow empty!", field));
-				if (operation.equalsIgnoreCase(QueryCriteria.OP_EQUAL)) {
-					op = "=";
-					if (filterCriteria.getNot()) {
-						op = "!=";
-					}
+				op = "=";
+				if (operation.equalsIgnoreCase(QueryCriteria.OP_EQUAL) && filterCriteria.getNot()) {
+					op = "!=";
 				}
 				if (operation.equalsIgnoreCase(QueryCriteria.OP_LESS_THAN)) {
 					op = "<";

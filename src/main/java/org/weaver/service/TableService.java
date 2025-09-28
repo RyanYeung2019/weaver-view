@@ -3,6 +3,7 @@ package org.weaver.service;
 import java.util.List;
 
 import org.weaver.query.entity.RequestConfig;
+import org.weaver.table.entity.UpdateCommand;
 
 import com.alibaba.fastjson.JSONObject;
 
@@ -14,9 +15,13 @@ import com.alibaba.fastjson.JSONObject;
 
 public interface TableService {
 	
+	void setTableReqConfig(RequestConfig tableReqConfig);
+	
 	<T> List<T> listTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig, String... whereFields);
 
 	<T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
+	
+	<T> void multipleUpdateTrx(String dataSourceName,List<UpdateCommand<T>> updateCommands, RequestConfig requestConfig);
 	
 	<T> int insertTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 	
