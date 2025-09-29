@@ -21,7 +21,7 @@ public interface TableService {
 
 	<T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 	
-	<T> void multipleUpdateTrx(String dataSourceName,List<UpdateCommand<T>> updateCommands, RequestConfig requestConfig);
+	<T> void modifyDataWithTrx(String dataSourceName,List<UpdateCommand<T>> updateCommands, RequestConfig requestConfig);
 	
 	<T> int insertTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 	

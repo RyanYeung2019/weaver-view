@@ -145,7 +145,7 @@ public class TableServiceImpl implements TableService {
 		}
 	}
 	
-	public <T> void multipleUpdateTrx(String dataSourceName,List<UpdateCommand<T>> updateCommands, RequestConfig requestConfig) {
+	public <T> void modifyDataWithTrx(String dataSourceName,List<UpdateCommand<T>> updateCommands, RequestConfig requestConfig) {
 		String dsName = dataSourceName==null?"dataSource":dataSourceName;
 		DataSource dataSource = this.applicationContext.getBean(dsName, DataSource.class);
 		DataSourceTransactionManager transactionManager = new DataSourceTransactionManager(dataSource);
@@ -183,6 +183,8 @@ public class TableServiceImpl implements TableService {
             transactionManager.commit(txStatus);
         } catch (Exception e) {
             transactionManager.rollback(txStatus);
+        	log.error("rollback for exception",e);
+            throw new RuntimeException(e);
         }
 	}
 
