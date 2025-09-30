@@ -4,13 +4,13 @@ import java.util.List;
 	
 	public class UpdateCommand<T> {
 	
-		private String command;
-		private String tableName;
-		private T data;
-		private List<T> dataList;
-		private Long assertMaxRecordAffected;
-		private String[] whereFields;
-		private int[] result;
+	private String command;
+	private String tableName;
+	private T data;
+	private List<T> datas;
+	private Long assertMaxRecordAffected;
+	private String[] whereFields;
+	private int[] result;
 	
 	public String getCommand() {
 		return command;
@@ -30,11 +30,11 @@ import java.util.List;
 	public void setData(T data) {
 		this.data = data;
 	}
-	public List<T> getDataList() {
-		return dataList;
+	public List<T> getDatas() {
+		return datas;
 	}
-	public void setDataList(List<T> dataList) {
-		this.dataList = dataList;
+	public void setDatas(List<T> datas) {
+		this.datas = datas;
 	}
 	public Long getAssertMaxRecordAffected() {
 		return assertMaxRecordAffected;

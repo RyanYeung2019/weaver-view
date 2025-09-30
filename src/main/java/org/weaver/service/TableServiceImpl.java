@@ -157,7 +157,7 @@ public class TableServiceImpl implements TableService {
         try {
         	for(UpdateCommand<T> updateCommand:updateCommands) {
         		if("persisten".equals(updateCommand.getCommand())) {
-        			int[] result = this.persistenTableBatch(dataSource, updateCommand.getTableName(), updateCommand.getDataList(), requestConfig);
+        			int[] result = this.persistenTableBatch(dataSource, updateCommand.getTableName(), updateCommand.getDatas(), requestConfig);
         			updateCommand.setResult(result);
         		}
         		if("insert".equals(updateCommand.getCommand())) {
