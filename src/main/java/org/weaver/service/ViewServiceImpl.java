@@ -47,6 +47,9 @@ public class ViewServiceImpl implements ViewService {
 
 	@Autowired
 	ViewDao queryDao;
+	
+	@Autowired
+	TableDao tableDao;
 
 	@Autowired
 	ViewDefine viewDefine;
@@ -308,7 +311,7 @@ public class ViewServiceImpl implements ViewService {
 		if(tableId!=null) {
 			viewEn = new ViewEn();
 			List<ViewField> listFields = new ArrayList<>();
-			TableEn tableEn = queryDao.getTableInfo(dataSource, tableId);
+			TableEn tableEn = tableDao.getTableInfo(dataSource, tableId);
 			Map<String, ViewField> fieldMap = new HashMap<>();
 			for(FieldEn fieldEn:tableEn.getFieldEns()) {
 				ViewField viewField = new ViewField(fieldEn.getField());

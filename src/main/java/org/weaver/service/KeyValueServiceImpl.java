@@ -22,11 +22,11 @@ public class KeyValueServiceImpl implements KeyValueService {
 	private static final Logger log = LoggerFactory.getLogger(KeyValueService.class);
 
 	@Autowired
-	ViewDao queryDao;
+	KeyValueDao keyValueDao;
 	
 	public String getValue(KeyValueSettingEn setting,String key) {
 		log.info("getValue");
-		Map<String,Object> result = queryDao.getKeyValueTable(setting,key);
+		Map<String,Object> result = keyValueDao.getKeyValueTable(setting,key);
 		if(result==null) return null;
 		Object value = result.get(setting.getValue());
 		if(value==null) return null;
@@ -46,18 +46,18 @@ public class KeyValueServiceImpl implements KeyValueService {
 	}	
 	
 	public Map<String,Object> getData(KeyValueSettingEn setting,String key) {
-		return queryDao.getKeyValueTable(setting,key);
+		return keyValueDao.getKeyValueTable(setting,key);
 	}	
 	
 	public int setData(KeyValueSettingEn setting,String key,LinkedHashMap<String,Object> data,String userId) {
 		if(getData(setting,key)==null) {
 			if(setting.getCreateUser()!=null && userId != null)data.put(setting.getCreateUser(), userId);
 			if(setting.getCreateDate()!=null)data.put(setting.getCreateDate(), new Date());
-			return queryDao.insertKeyValueTable(setting, key, data);
+			return keyValueDao.insertKeyValueTable(setting, key, data);
 		}else {
 			if(setting.getUpdateUser()!=null && userId != null)data.put(setting.getUpdateUser(), userId);
 			if(setting.getUpdateDate()!=null)data.put(setting.getUpdateDate(), new Date());
-			return queryDao.updateKeyValueTable(setting, key, data);
+			return keyValueDao.updateKeyValueTable(setting, key, data);
 		}
 	}
 

@@ -23,7 +23,9 @@ import org.weaver.query.mapper.CamelFieldMapper;
  */
 
 public class ViewStatementImpl implements ViewStatement {
-
+	
+	public static final String DEFAULT_DATA_SOURCE = "dataSource";
+	
 	private ViewService viewService;
 	private String viewId;
 	private String tableId;
@@ -36,7 +38,7 @@ public class ViewStatementImpl implements ViewStatement {
 	private QueryFilter queryFilter;
 	private List<String> aggrList;
 	private RequestConfig viewReqConfig = new RequestConfig();
-	private String dataSource = "dataSource";
+	private String dataSource = DEFAULT_DATA_SOURCE;
 	
 	private String sql;
 	private Integer level;

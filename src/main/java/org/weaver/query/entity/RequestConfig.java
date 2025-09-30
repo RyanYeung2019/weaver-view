@@ -26,6 +26,8 @@ public class RequestConfig {
 	
 	private SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
 	
+	private String dataSourceName;
+	
 	public String getLanguage() {
 		return language;
 	}
@@ -76,6 +78,14 @@ public class RequestConfig {
 
 	public void setTimeFormat(SimpleDateFormat timeFormat) {
 		this.timeFormat = timeFormat;
+	}
+
+	public String getDataSourceName() {
+		return dataSourceName;
+	}
+
+	public void setDataSourceName(String dataSourceName) {
+		this.dataSourceName = dataSourceName;
 	}
 
 

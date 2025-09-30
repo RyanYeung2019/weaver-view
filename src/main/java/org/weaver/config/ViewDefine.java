@@ -29,6 +29,7 @@ import org.weaver.config.entity.ViewField;
 import org.weaver.query.entity.EnumItemEn;
 import org.weaver.service.ViewDao;
 import org.weaver.service.ViewQuery;
+import org.weaver.service.ViewStatementImpl;
 import org.weaver.view.util.Utils;
 
 /**
@@ -145,7 +146,7 @@ public class ViewDefine {
 		}
 		String title = (String) rmkData.get("name");
 		String dataSource = (String) rmkData.get("dataSource");
-		dataSource = dataSource==null?"dataSource":dataSource;
+		dataSource = dataSource==null?ViewStatementImpl.DEFAULT_DATA_SOURCE:dataSource;
 		String remark = (String) rmkData.get("remark");
 		
 		Map<String, Map<String, String>> enumDataMapFields = null;

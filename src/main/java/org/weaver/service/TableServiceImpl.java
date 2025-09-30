@@ -41,7 +41,7 @@ public class TableServiceImpl implements TableService {
 	private static final Logger log = LoggerFactory.getLogger(TableService.class);
 
 	@Autowired
-	ViewDao queryDao;
+	TableDao tableDao;
 	
 	@Autowired
 	LangDefine langDefine;	
@@ -68,7 +68,7 @@ public class TableServiceImpl implements TableService {
 	@SuppressWarnings("unchecked")
 	public <T> List<T> listTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig, String... whereFields) {
 		log.info("listTable");
-		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		TableEn tableEn = tableDao.getTableInfo(dataSourceName, tableName);
 		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
 		if(data instanceof LinkedHashMap) {
 			LinkedHashMap<String,Object> item = (LinkedHashMap<String, Object>)data;
@@ -94,7 +94,8 @@ public class TableServiceImpl implements TableService {
 			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
 			
 			String sql = "select * from "+tableEn.getTableNameSql()+" where "+whereKey;
-			return(List<T>) queryDao.listData(dataSourceName,values.toArray(), sql);
+			DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourceName), DataSource.class);
+			return(List<T>) tableDao.listData(dataSource,values.toArray(), sql);
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
 			List<Map<String,Object>> datas = listTable(dataSourceName,tableName,item,requestConfig,whereFields);
@@ -113,7 +114,7 @@ public class TableServiceImpl implements TableService {
 	}
 	
 	public <T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
-		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		TableEn tableEn = tableDao.getTableInfo(dataSourceName, tableName);
 		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
 		String[] keyFields = keys.stream()
                 .map(PrimaryKeyEn::getFieldDb)
@@ -146,8 +147,8 @@ public class TableServiceImpl implements TableService {
 	}
 	
 	public <T> void modifyDataWithTrx(String dataSourceName,List<UpdateCommand<T>> updateCommands, RequestConfig requestConfig) {
-		String dsName = dataSourceName==null?"dataSource":dataSourceName;
-		DataSource dataSource = this.applicationContext.getBean(dsName, DataSource.class);
+		requestConfig.setDataSourceName(SqlUtils.getDataSourceName(dataSourceName));
+		DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourceName), DataSource.class);
 		DataSourceTransactionManager transactionManager = new DataSourceTransactionManager(dataSource);
         DefaultTransactionDefinition txDef = new DefaultTransactionDefinition();
         txDef.setIsolationLevel(TransactionDefinition.ISOLATION_DEFAULT);
@@ -156,27 +157,27 @@ public class TableServiceImpl implements TableService {
         try {
         	for(UpdateCommand<T> updateCommand:updateCommands) {
         		if("persisten".equals(updateCommand.getCommand())) {
-        			int[] result = this.persistenTableBatch(dataSourceName, updateCommand.getTableName(), updateCommand.getDataList(), requestConfig);
+        			int[] result = this.persistenTableBatch(dataSource, updateCommand.getTableName(), updateCommand.getDataList(), requestConfig);
         			updateCommand.setResult(result);
         		}
         		if("insert".equals(updateCommand.getCommand())) {
-        			int result = this.insertTable(dataSourceName, updateCommand.getTableName(), updateCommand.getData(), requestConfig);
+        			int result = this.insertTable(dataSource, updateCommand.getTableName(), updateCommand.getData(), requestConfig);
         			updateCommand.setResult(new int[]{result});
         		}
         		if("update".equals(updateCommand.getCommand())) {
-        			int result = this.updateTable(dataSourceName, updateCommand.getTableName(), updateCommand.getData(), requestConfig);
+        			int result = this.updateTable(dataSource, updateCommand.getTableName(), updateCommand.getData(), requestConfig);
         			updateCommand.setResult(new int[]{result});
         		}
         		if("updateBatch".equals(updateCommand.getCommand())) {
-        			int result = this.updateTableBatch(dataSourceName, updateCommand.getTableName(), updateCommand.getData(),updateCommand.getAssertMaxRecordAffected(),requestConfig,updateCommand.getWhereFields());
+        			int result = this.updateTableBatch(dataSource, updateCommand.getTableName(), updateCommand.getData(),updateCommand.getAssertMaxRecordAffected(),requestConfig,updateCommand.getWhereFields());
         			updateCommand.setResult(new int[]{result});
         		}
         		if("delete".equals(updateCommand.getCommand())) {
-        			int result = this.deleteTable(dataSourceName, updateCommand.getTableName(), updateCommand.getData(), requestConfig);
+        			int result = this.deleteTable(dataSource, updateCommand.getTableName(), updateCommand.getData(), requestConfig);
         			updateCommand.setResult(new int[]{result});
         		}
         		if("deleteBatch".equals(updateCommand.getCommand())) {
-        			int result = this.deleteTableBatch(dataSourceName, updateCommand.getTableName(), updateCommand.getData(),updateCommand.getAssertMaxRecordAffected(),requestConfig,updateCommand.getWhereFields());
+        			int result = this.deleteTableBatch(dataSource, updateCommand.getTableName(), updateCommand.getData(),updateCommand.getAssertMaxRecordAffected(),requestConfig,updateCommand.getWhereFields());
         			updateCommand.setResult(new int[]{result});
         		}
         	}
@@ -187,10 +188,16 @@ public class TableServiceImpl implements TableService {
             throw new RuntimeException(e);
         }
 	}
-
-	@SuppressWarnings("unchecked")
+	
 	public <T> int[] persistenTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig) {
-		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourceName),DataSource.class);
+		requestConfig.setDataSourceName(SqlUtils.getDataSourceName(dataSourceName));
+		return this.persistenTableBatch(dataSource, tableName, dataList, requestConfig);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public <T> int[] persistenTableBatch(DataSource dataSource, String tableName, List<T> dataList, RequestConfig requestConfig) {
+		TableEn tableEn = tableDao.getTableInfo(requestConfig.getDataSourceName(), tableName);
 		List<MapSqlParameterSource> dataForInsert = new ArrayList<>();
 		int[] result = new int[] {}; 
 		for(T data:dataList) {
@@ -262,13 +269,19 @@ public class TableServiceImpl implements TableService {
 					sql = "INSERT OR REPLACE INTO "+tableEn.getTableNameSql()+"("+fields+")VALUES("+values+")";
 				}
 			}
-			result = queryDao.executeSqlBatch(dataSourceName,dataForInsert,sql);
+			result = tableDao.executeSqlBatch(dataSource,dataForInsert,sql);
 		}
 		return result;
-	}	
+	}
 	
 	public <T> int insertTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
-		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourceName), DataSource.class);
+		requestConfig.setDataSourceName(SqlUtils.getDataSourceName(dataSourceName));
+		return this.insertTable(dataSource, tableName, data, requestConfig);
+	}
+	
+	public <T> int insertTable(DataSource dataSource, String tableName, T data, RequestConfig requestConfig) {
+		TableEn tableEn = tableDao.getTableInfo(requestConfig.getDataSourceName(), tableName);
 		FieldEn autoIncEn = tableEn.getFieldEns().stream().filter(item->item.getAutoInc()).findFirst().orElse(null);
 		Integer result = 0;
 		if(data instanceof Map) {
@@ -293,17 +306,23 @@ public class TableServiceImpl implements TableService {
 				}
 			}
 			String sql = "insert into "+tableEn.getTableNameSql()+"("+fields+")VALUES("+values+")";
-			result = queryDao.executeInsert(dataSourceName, item, sql, autoIncEn); 
+			result = tableDao.executeInsert(dataSource, item, sql, autoIncEn); 
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
-			result = insertTable(dataSourceName,tableName,item,requestConfig);
+			result = insertTable(dataSource,tableName,item,requestConfig);
 			Utils.mapToEntity(item, data);
 		}
 		return result;
 	}
-
+	
 	public <T> int updateTableBatch(String dataSourceName, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields) {
-		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourceName), DataSource.class);
+		requestConfig.setDataSourceName(SqlUtils.getDataSourceName(dataSourceName));
+		return this.updateTableBatch(dataSource, tableName, data, assertMaxRecordAffected, requestConfig, whereFields);
+	}
+
+	public <T> int updateTableBatch(DataSource dataSource, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields) {
+		TableEn tableEn = tableDao.getTableInfo(requestConfig.getDataSourceName(), tableName);
 		Integer result = 0;
 		if(data instanceof Map ) {
 			@SuppressWarnings("unchecked")
@@ -336,26 +355,38 @@ public class TableServiceImpl implements TableService {
 			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
 			String sql = "update "+tableEn.getTableNameSql()+" set "+upValues+" where "+upKeys;
 			String checkSql = "select count(*)from "+tableEn.getTableNameSql()+" where "+upKeys;
-			result = queryDao.executeUpdate(dataSourceName, item, sql, checkSql,assertMaxRecordAffected); 
+			result = tableDao.executeUpdate(dataSource, item, sql, checkSql,assertMaxRecordAffected); 
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
-			result = updateTableBatch(dataSourceName,tableName,item,assertMaxRecordAffected,requestConfig,whereFields);
+			result = updateTableBatch(dataSource,tableName,item,assertMaxRecordAffected,requestConfig,whereFields);
 			Utils.mapToEntity(item, data);
 		}
 		return result;		
 	}
 	
 	public <T> int updateTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
-		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourceName), DataSource.class);
+		requestConfig.setDataSourceName(SqlUtils.getDataSourceName(dataSourceName));
+		return this.updateTable(dataSource, tableName, data, requestConfig);
+	}	
+	
+	public <T> int updateTable(DataSource dataSource, String tableName, T data, RequestConfig requestConfig) {
+		TableEn tableEn = tableDao.getTableInfo(requestConfig.getDataSourceName(), tableName);
 		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
 		String[] keyFields = keys.stream()
                 .map(PrimaryKeyEn::getField)
                 .toArray(String[]::new);
-		return updateTableBatch(dataSourceName,tableName,data,1l,requestConfig,keyFields);
+		return updateTableBatch(dataSource,tableName,data,1l,requestConfig,keyFields);
 	}	
-
+	
 	public <T> int deleteTableBatch(String dataSourceName, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields) {
-		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourceName), DataSource.class);
+		requestConfig.setDataSourceName(SqlUtils.getDataSourceName(dataSourceName));
+		return this.deleteTableBatch(dataSource, tableName, data, assertMaxRecordAffected, requestConfig, whereFields);
+	}
+
+	public <T> int deleteTableBatch(DataSource dataSource, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields) {
+		TableEn tableEn = tableDao.getTableInfo(requestConfig.getDataSourceName(), tableName);
 		Integer result = 0;
 		if(data instanceof Map) {
 			@SuppressWarnings("unchecked")
@@ -380,22 +411,28 @@ public class TableServiceImpl implements TableService {
 			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
 			String sql = "delete from "+tableEn.getTableNameSql()+" where "+delKeys;
 			String checkSql = "select count(*) from "+tableEn.getTableNameSql()+" where "+delKeys;
-			result = queryDao.executeUpdate(dataSourceName, item, sql, checkSql,assertMaxRecordAffected); 
+			result = tableDao.executeUpdate(dataSource, item, sql, checkSql,assertMaxRecordAffected); 
 		}else {
 			Map<String,Object> item = Utils.entityToMap(data);
-			result = deleteTableBatch(dataSourceName,tableName,item,assertMaxRecordAffected,requestConfig,whereFields);
+			result = deleteTableBatch(dataSource,tableName,item,assertMaxRecordAffected,requestConfig,whereFields);
 			Utils.mapToEntity(item, data);
 		}
 		return result;
 	}
-	
+
 	public <T> int deleteTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
-		TableEn tableEn = queryDao.getTableInfo(dataSourceName, tableName);
+		DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourceName), DataSource.class);
+		requestConfig.setDataSourceName(SqlUtils.getDataSourceName(dataSourceName));
+		return this.deleteTable(dataSource, tableName, data, requestConfig);
+	}
+
+	public <T> int deleteTable(DataSource dataSource, String tableName, T data, RequestConfig requestConfig) {
+		TableEn tableEn = tableDao.getTableInfo(requestConfig.getDataSourceName(), tableName);
 		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
 		String[] keyFields = keys.stream()
                 .map(PrimaryKeyEn::getField)
                 .toArray(String[]::new);
-		return deleteTableBatch(dataSourceName,tableName,data,1l,requestConfig,keyFields);		
+		return deleteTableBatch(dataSource,tableName,data,1l,requestConfig,keyFields);		
 	}
 
 	private void mergeData(List<FieldEn> fieldEns,Map<String,Object> param,Map<String,Object> data){

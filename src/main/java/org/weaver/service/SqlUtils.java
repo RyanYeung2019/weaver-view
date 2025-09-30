@@ -52,6 +52,10 @@ class SqlUtils {
 	public static String varName() {
 		return "A"+UUID.randomUUID().toString().replace("-", "");
 	}
+	
+	public static String getDataSourceName(String dataSourreBeanName) {
+		return dataSourreBeanName==null?ViewStatementImpl.DEFAULT_DATA_SOURCE:dataSourreBeanName;
+	}
 
 	public static FilterCriteria paramFilter(QueryFilter queryFilter, List<ViewField> viewFields, String dataSourceType,RequestConfig viewReqConfig) {
 		if(queryFilter==null)return null;
@@ -268,4 +272,28 @@ class SqlUtils {
 			return "\""+keyWord+"\"";
 		}
 	}
+	
+	public static Map<String,String> tableNameInfo(String table,String sourceType){
+		String[] tableArray = table.split("[.]");
+		String tableName = null;
+		String catalog = null;
+		if(tableArray.length==1) {
+    		tableName = tableArray[0];
+		}else {
+			catalog = tableArray[0];
+    		tableName = tableArray[1];
+		}
+        String tableNameSql = (
+        		catalog==null?"":(
+        				SqlUtils.sqlDbKeyWordEscape(catalog,sourceType)+"." 
+        				)
+        		) + SqlUtils.sqlDbKeyWordEscape(tableName,sourceType);
+		Map<String,String> result = new HashMap<>();
+		result.put("catalog", catalog);	
+		result.put("tableName", tableName);	
+		result.put("tableNameSql", tableNameSql);
+		return result;
+	}
+	
+	
 }
