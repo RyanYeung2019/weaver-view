@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +33,7 @@ class SqlUtils {
 	private static final Logger log = LoggerFactory.getLogger(SqlUtils.class);
 
 
+	private static Pattern patternText = Pattern.compile("\\{\\{\\s*(.*?)\\s*}}");
 
 	public static final String NAME_ORACLE = "oracle";
 	public static final String NAME_PGSQL = "postgres";
@@ -149,6 +152,8 @@ class SqlUtils {
 		return result;
 	}
 
+	
+	
 	public static Object convertObjVal(String type, Object val,RequestConfig viewReqConfig,String dataSourceType) {
 		if(val ==null) return null;
 		Object result = val;
@@ -157,27 +162,71 @@ class SqlUtils {
 		}
 		if (!NAME_SQLITE.equals(dataSourceType) && ViewField.FIELDTYPE_DATE.equals(type) && val instanceof String ) {
 			try {
-				result = viewReqConfig.getDateFormat().parse(val.toString());
+				String strVal = val.toString();
+				Matcher matcher = patternText.matcher(strVal);
+				if (matcher.find()) {
+					String key = matcher.group(1);
+					result = viewReqConfig.getParams().get(key);
+				}else {
+					result = viewReqConfig.getDateFormat().parse(val.toString());
+				}
 			} catch (ParseException e) {
 				throw new RuntimeException(String.format("Cannot parse %s to %s ",val,ViewField.FIELDTYPE_DATE));
 			}
 		}
 		if (!NAME_SQLITE.equals(dataSourceType) && ViewField.FIELDTYPE_TIME.equals(type) && val instanceof String ) {
 			try {
-				result = viewReqConfig.getTimeFormat().parse(val.toString());
+				String strVal = val.toString();
+				Matcher matcher = patternText.matcher(strVal);
+				if (matcher.find()) {
+					String key = matcher.group(1);
+					result = viewReqConfig.getParams().get(key);
+				}else {
+					result = viewReqConfig.getTimeFormat().parse(val.toString());
+				}
 			} catch (ParseException e) {
 				throw new RuntimeException(String.format("Cannot parse %s to %s ",val,ViewField.FIELDTYPE_TIME));
 			}
 		}
 		if (!NAME_SQLITE.equals(dataSourceType) && ViewField.FIELDTYPE_DATETIME.equals(type) && val instanceof String ) {
 			try {
-				result = viewReqConfig.getDatetimeFormat().parse(val.toString());
+				String strVal = val.toString();
+				Matcher matcher = patternText.matcher(strVal);
+				if (matcher.find()) {
+					String key = matcher.group(1);
+					result = viewReqConfig.getParams().get(key);
+					if(result==null)log.error("key:"+key+"'s value is null!");
+				}else {
+					result = viewReqConfig.getDatetimeFormat().parse(val.toString());
+				}
 			} catch (ParseException e) {
 				throw new RuntimeException(String.format("Cannot parse %s to %s ",val,ViewField.FIELDTYPE_DATETIME));
 			}
 		}
-		if ( ViewField.FIELDTYPE_STRING.equals(type) && val instanceof Date ) {
+		if ( ViewField.FIELDTYPE_STRING.equals(type)) {
+			if(val instanceof Date){
 				result = viewReqConfig.getDatetimeFormat().format(val);
+			}else {
+				StringBuilder tranFieldsInput = new StringBuilder(val.toString());
+				StringBuilder tranFieldsOutput = new StringBuilder();
+				int lastIndex = 0;
+				Matcher matcher = patternText.matcher(tranFieldsInput);
+				while (matcher.find()) {
+					String key = matcher.group(1);
+					Object paramsVal = viewReqConfig.getParams().get(key);
+					if(paramsVal==null) {
+						paramsVal = "";
+					}else {
+						log.error("key:"+key+"'s value is not null ");
+					}
+					tranFieldsOutput.append(tranFieldsInput, lastIndex, matcher.start()).append(paramsVal);
+					lastIndex = matcher.end();
+				}
+				if (lastIndex < tranFieldsInput.length()) {
+					tranFieldsOutput.append(tranFieldsInput, lastIndex, tranFieldsInput.length());
+				}
+				result = tranFieldsOutput.toString();
+			}
 		}
 		if (ViewField.FIELDTYPE_NUMBER.equals(type) && val instanceof String) {
 			if (val.toString().contains(".")) {
