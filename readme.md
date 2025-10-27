@@ -16,7 +16,7 @@
   <dependency>
     <groupId>io.github.ryanyeung2019</groupId>
     <artifactId>weaver-view</artifactId>
-    <version>2.1.20</version>
+    <version>2.1.21</version>
   </dependency>
 ```
 

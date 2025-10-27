@@ -13,6 +13,8 @@ import org.weaver.query.entity.KeyValueSettingEn;
 
 public interface KeyValueService {
 	
+	Long getNextSerialId(KeyValueSettingEn setting,String key);
+	
 	String getValue(KeyValueSettingEn setting,String key);
 	
 	int setValue(KeyValueSettingEn setting,String key,String value);

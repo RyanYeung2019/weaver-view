@@ -24,6 +24,13 @@ public class KeyValueServiceImpl implements KeyValueService {
 	@Autowired
 	KeyValueDao keyValueDao;
 	
+	public Long getNextSerialId(KeyValueSettingEn setting,String key) {
+        String val = this.getValue(setting,key);
+        Long next = (val==null?0l:Long.valueOf(val))+1;
+        this.setValue(setting,key, String.valueOf(next));
+        return next;
+	}
+	
 	public String getValue(KeyValueSettingEn setting,String key) {
 		log.info("getValue");
 		Map<String,Object> result = keyValueDao.getKeyValueTable(setting,key);
