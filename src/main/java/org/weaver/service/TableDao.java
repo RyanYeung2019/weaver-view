@@ -7,6 +7,7 @@ import javax.sql.DataSource;
 
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.weaver.config.entity.ViewField;
+import org.weaver.table.entity.DatabaseType;
 import org.weaver.table.entity.FieldEn;
 import org.weaver.table.entity.TableEn;
 /**
@@ -17,7 +18,7 @@ import org.weaver.table.entity.TableEn;
 
 public interface TableDao {
 	
-	String getDatabaseType(DataSource dataSource);
+	DatabaseType getDatabaseType(DataSource dataSource);
 	
 	TableEn getTableInfo(String dataSource, String table); 
 	
@@ -29,5 +30,5 @@ public interface TableDao {
 	
 	List<Map<String,Object>> listData(DataSource dataSource,Object[] values,String sql);
 	
-	List<ViewField> listFieldType(DataSource dataSource,String sourceType, String queryStr,Map<String, Object> critParams);
+	List<ViewField> listFieldType(DataSource dataSource,DatabaseType sourceType, String queryStr,Map<String, Object> critParams);
 }

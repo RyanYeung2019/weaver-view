@@ -26,7 +26,7 @@ public class TableEn implements Serializable {
     private List<ForeignKeyEn> foreignKeyEns;
     private List<IndexEn> indexEns;
     private String remark;
-	private String sourceType;// 数据源类型
+	private DatabaseType sourceType;// 数据源类型
 	private String dataSource;// 使用的数据源
 	private String sql;
 	
@@ -122,11 +122,11 @@ public class TableEn implements Serializable {
 		this.remark = remark;
 	}
 
-	public String getSourceType() {
+	public DatabaseType getSourceType() {
 		return sourceType;
 	}
 
-	public void setSourceType(String sourceType) {
+	public void setSourceType(DatabaseType sourceType) {
 		this.sourceType = sourceType;
 	}
 

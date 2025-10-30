@@ -5,6 +5,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.weaver.table.entity.DatabaseType;
+
 import com.alibaba.fastjson.JSONObject;
 
 /**
@@ -23,7 +25,7 @@ public class ViewEn {
 
 	private String dataSource;// 使用的数据源
 
-	private String sourceType;// 数据源类型
+	private DatabaseType sourceType;// 数据源类型
 
 	private LinkedHashMap<String, String> param;
 
@@ -79,11 +81,11 @@ public class ViewEn {
 		this.dataSource = dataSource;
 	}
 
-	public String getSourceType() {
+	public DatabaseType getSourceType() {
 		return sourceType;
 	}
 
-	public void setSourceType(String sourceType) {
+	public void setSourceType(DatabaseType sourceType) {
 		this.sourceType = sourceType;
 	}
 

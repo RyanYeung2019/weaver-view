@@ -229,44 +229,67 @@ public class TableServiceImpl implements TableService {
 			StringBuffer values = new StringBuffer();
 			StringBuffer upValues = new StringBuffer();
 			StringBuffer keysString= new StringBuffer();
+			
+			
+			StringBuffer mergeUsing = new StringBuffer();
+			StringBuffer mergeUsingOn = new StringBuffer();
+			StringBuffer mergeUpdateField = new StringBuffer();
+			StringBuffer mergeInsertValue = new StringBuffer();
+			
 			boolean first = true;
 			boolean firstVal = true;
 			boolean firstKey = true;
+			
 			for(String field:item.getParameterNames()) {
 				FieldEn fieldEn = tableEn.getFieldEnMap().get(field);
 				if(fieldEn!=null) {
 					if(!first) {
 						fields.append(",");
 						values.append(",");
+						mergeUsing.append(",");
+						mergeInsertValue.append(",");
 					}
 					first = false;
 					fields.append(fieldEn.getFieldDbSql());
 					values.append(":"+fieldEn.getField());
+					mergeUsing.append(":"+fieldEn.getField() +" as "+fieldEn.getFieldDbSql());
+					mergeInsertValue.append("s."+fieldEn.getFieldDbSql());
 					if(keyFields.size()>0 ) {
 						if(keyFields.contains(fieldEn.getFieldDb())) {
 							if(!firstKey) {
 								keysString.append(",");
+								mergeUsingOn.append(",");
 							}
 							keysString.append(fieldEn.getFieldDb());
+							mergeUsingOn.append("t."+fieldEn.getFieldDb() +" = s."+fieldEn.getFieldDb());
 							firstKey = false;						
 						}else {
 							if(!firstVal) {
 								upValues.append(",");
+								mergeUpdateField.append(",");
 							}
 							upValues.append(fieldEn.getFieldDb() + "=:"+fieldEn.getField() );
+							mergeUpdateField.append("t."+fieldEn.getFieldDb()+" = s."+fieldEn.getFieldDb() );
 							firstVal = false;						
 						}
 					}
 				}
 			}
+
 			String sql = "INSERT INTO "+tableEn.getTableNameSql()+"("+fields+")VALUES("+values+")";
 			if(keyFields.size()>0) {
-				if (tableEn.getSourceType().equals(SqlUtils.NAME_MYSQL)) {
+				if (tableEn.getSourceType().getType().equals(SqlUtils.NAME_MYSQL)) {
 					sql = "INSERT INTO "+tableEn.getTableNameSql()+"("+fields+")VALUES("+values+")ON DUPLICATE KEY UPDATE "+upValues;
-				} else if (tableEn.getSourceType().equals(SqlUtils.NAME_PGSQL)) {
+				} else if (tableEn.getSourceType().getType().equals(SqlUtils.NAME_PGSQL) && tableEn.getSourceType().getMajorVersion()>=9 && tableEn.getSourceType().getMinorVersion()>=5 ) {
 					sql = "INSERT INTO "+tableEn.getTableNameSql()+"("+fields+")VALUES("+values+")ON CONFLICT ("+keysString+") DO UPDATE SET "+upValues;
-				} else if (tableEn.getSourceType().equals(SqlUtils.NAME_SQLITE)) {
+				} else if (tableEn.getSourceType().getType().equals(SqlUtils.NAME_SQLITE)) {
 					sql = "INSERT OR REPLACE INTO "+tableEn.getTableNameSql()+"("+fields+")VALUES("+values+")";
+				} else if (tableEn.getSourceType().getType().equals(SqlUtils.NAME_ORACLE)) {
+					sql = "MERGE INTO " + tableEn.getTableNameSql() + " t USING (SELECT "+mergeUsing+" FROM DUAL) s ON ("+mergeUsingOn+") WHEN MATCHED THEN UPDATE SET "+mergeUpdateField + " WHEN NOT MATCHED THEN INSERT ("+fields+") VALUES ("+mergeInsertValue+")";
+				} else if (tableEn.getSourceType().getType().equals(SqlUtils.NAME_MSSQL)) {
+					sql = "MERGE INTO " + tableEn.getTableNameSql() + " t USING (SELECT "+mergeUsing+") s ON ("+mergeUsingOn+") WHEN MATCHED THEN UPDATE SET "+mergeUpdateField + " WHEN NOT MATCHED THEN INSERT ("+fields+") VALUES ("+mergeInsertValue+")";
+				} else {
+					log.info("Database Support Insert Only");
 				}
 			}
 			result = tableDao.executeSqlBatch(dataSource,dataForInsert,sql);

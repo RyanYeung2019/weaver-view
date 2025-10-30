@@ -24,7 +24,7 @@
     </licenses>
     <groupId>io.github.ryanyeung2019</groupId>
     <artifactId>weaver-view</artifactId>
-    <version>2.1.21</version>
+    <version>2.1.22</version>
     <scm>
         <connection>scm:git:git://github.com/RyanYeung2019/weaver-view.git</connection>
         <developerConnection>scm:git:ssh://git@github.com:RyanYeung2019/weaver-view.git</developerConnection>
@@ -78,17 +78,17 @@
     <build>
         <finalName>${project.artifactId}</finalName>
         <plugins>
-            <plugin>
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.6.13</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <serverId>ossrh</serverId>
-                    <nexusUrl>https://ossrh-staging-api.central.sonatype.com/</nexusUrl>
-                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                </configuration>
-            </plugin>
+			<plugin>
+			  <groupId>org.sonatype.plugins</groupId>
+			  <artifactId>nexus-staging-maven-plugin</artifactId>
+			  <version>1.7.0</version>
+			  <extensions>true</extensions>
+			  <configuration>
+			    <serverId>ossrh</serverId>
+			    <nexusUrl>https://ossrh-staging-api.central.sonatype.com</nexusUrl>
+			    <autoReleaseAfterClose>true</autoReleaseAfterClose>
+			  </configuration>
+			</plugin>            
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
@@ -146,6 +146,11 @@
 				          </altDeploymentRepository>
                 </configuration>
             </plugin>
+            
+            
+            
+            
+            
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>

@@ -2,6 +2,8 @@ package org.weaver.query.entity;
 
 import java.util.LinkedHashMap;
 
+import org.weaver.table.entity.DatabaseType;
+
 /**
  *
  * @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
@@ -12,7 +14,7 @@ public class KeyValueSettingEn {
 
 	String dataSourceName;
 
-	String sourceType;// 数据源类型
+	DatabaseType sourceType;// 数据源类型
 
 	String table;
 
@@ -104,11 +106,11 @@ public class KeyValueSettingEn {
 		this.dataSourceName = dataSourceName;
 	}
 	
-	public String getSourceType() {
+	public DatabaseType getSourceType() {
 		return sourceType;
 	}
 
-	public void setSourceType(String sourceType) {
+	public void setSourceType(DatabaseType sourceType) {
 		this.sourceType = sourceType;
 	}
 

@@ -18,6 +18,7 @@ import org.weaver.config.entity.ViewField;
 import org.weaver.query.entity.QueryCriteria;
 import org.weaver.query.entity.QueryFilter;
 import org.weaver.query.entity.RequestConfig;
+import org.weaver.table.entity.DatabaseType;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -60,7 +61,7 @@ class SqlUtils {
 		return dataSourreBeanName==null?ViewStatementImpl.DEFAULT_DATA_SOURCE:dataSourreBeanName;
 	}
 
-	public static FilterCriteria paramFilter(QueryFilter queryFilter, List<ViewField> viewFields, String dataSourceType,RequestConfig viewReqConfig) {
+	public static FilterCriteria paramFilter(QueryFilter queryFilter, List<ViewField> viewFields, DatabaseType dataSourceType,RequestConfig viewReqConfig) {
 		if(queryFilter==null)return null;
 		JSONObject jsonObject = queryFilter.toJSONObject();
 		if(jsonObject==null)return null;
@@ -78,7 +79,7 @@ class SqlUtils {
 	}
 
 	private static Map<String, String> loopFilterCriteria(JSONObject jsonObject, FilterCriteria filterCriteria,
-			List<ViewField> viewFields, String dataSourceType,RequestConfig viewReqConfig) {
+			List<ViewField> viewFields, DatabaseType dataSourceType,RequestConfig viewReqConfig) {
 		Map<String, String> result = new HashMap<>();
 		if (jsonObject.containsKey("criteria")) {
 			filterCriteria.setType(jsonObject.getString("type"));// [and/or]
@@ -154,13 +155,13 @@ class SqlUtils {
 
 	
 	
-	public static Object convertObjVal(String type, Object val,RequestConfig viewReqConfig,String dataSourceType) {
+	public static Object convertObjVal(String type, Object val,RequestConfig viewReqConfig,DatabaseType dataSourceType) {
 		if(val ==null) return null;
 		Object result = val;
 		if (ViewField.FIELDTYPE_BOOLEAN.equals(type)) {
 			result = Boolean.valueOf(val.toString());
 		}
-		if (!NAME_SQLITE.equals(dataSourceType) && ViewField.FIELDTYPE_DATE.equals(type) && val instanceof String ) {
+		if (!NAME_SQLITE.equals(dataSourceType.getType()) && ViewField.FIELDTYPE_DATE.equals(type) && val instanceof String ) {
 			try {
 				String strVal = val.toString();
 				Matcher matcher = patternText.matcher(strVal);
@@ -174,7 +175,7 @@ class SqlUtils {
 				throw new RuntimeException(String.format("Cannot parse %s to %s ",val,ViewField.FIELDTYPE_DATE));
 			}
 		}
-		if (!NAME_SQLITE.equals(dataSourceType) && ViewField.FIELDTYPE_TIME.equals(type) && val instanceof String ) {
+		if (!NAME_SQLITE.equals(dataSourceType.getType()) && ViewField.FIELDTYPE_TIME.equals(type) && val instanceof String ) {
 			try {
 				String strVal = val.toString();
 				Matcher matcher = patternText.matcher(strVal);
@@ -188,7 +189,7 @@ class SqlUtils {
 				throw new RuntimeException(String.format("Cannot parse %s to %s ",val,ViewField.FIELDTYPE_TIME));
 			}
 		}
-		if (!NAME_SQLITE.equals(dataSourceType) && ViewField.FIELDTYPE_DATETIME.equals(type) && val instanceof String ) {
+		if (!NAME_SQLITE.equals(dataSourceType.getType()) && ViewField.FIELDTYPE_DATETIME.equals(type) && val instanceof String ) {
 			try {
 				String strVal = val.toString();
 				Matcher matcher = patternText.matcher(strVal);
@@ -241,7 +242,7 @@ class SqlUtils {
 		return result;
 	}
 
-	private static void calDbSqlVal(FilterCriteria filterCriteria, String dataSourceType) {
+	private static void calDbSqlVal(FilterCriteria filterCriteria, DatabaseType dataSourceType) {
 		String field = filterCriteria.getField();
 		String type = filterCriteria.getType();
 		Object val = filterCriteria.getVal();
@@ -273,9 +274,9 @@ class SqlUtils {
 						op = "!=";
 					}
 				} else {
-					op = dataSourceType.equals(NAME_PGSQL) ? "ilike" : "like";
+					op = dataSourceType.getType().equals(NAME_PGSQL) ? "ilike" : "like";
 					if (filterCriteria.getNot()) {
-						op = dataSourceType.equals(NAME_PGSQL) ? "not ilike" : "not like";
+						op = dataSourceType.getType().equals(NAME_PGSQL) ? "not ilike" : "not like";
 					}
 					if (operation.equalsIgnoreCase(QueryCriteria.OP_CONTAINS)) {
 						val = "%" + (val == null ? "" : val) + "%";
@@ -314,15 +315,15 @@ class SqlUtils {
 		}
 	}
 	
-	public static String sqlDbKeyWordEscape(String keyWord,String sourceType) {
-		if(SqlUtils.NAME_MYSQL.equals(sourceType)) {
+	public static String sqlDbKeyWordEscape(String keyWord,DatabaseType sourceType) {
+		if(SqlUtils.NAME_MYSQL.equals(sourceType.getType())) {
 			return "`"+keyWord+"`";
 		}else {
 			return "\""+keyWord+"\"";
 		}
 	}
 	
-	public static Map<String,String> tableNameInfo(String table,String sourceType){
+	public static Map<String,String> tableNameInfo(String table,DatabaseType sourceType){
 		String[] tableArray = table.split("[.]");
 		String tableName = null;
 		String catalog = null;

@@ -32,6 +32,7 @@ import org.weaver.config.entity.ViewEn;
 import org.weaver.config.entity.ViewField;
 import org.weaver.query.entity.SortByField;
 import org.weaver.query.entity.ViewData;
+import org.weaver.table.entity.DatabaseType;
 import org.weaver.view.util.FormatterUtils;
 
 /**
@@ -151,14 +152,14 @@ public class ViewDaoImpl implements ViewDao {
 		}
 		String dataSourceName = viewEn.getDataSource();
 		String dataSourreBeanName = dataSourceName;
-		String dataSourceType = viewEn.getSourceType();
+		DatabaseType dataSourceType = viewEn.getSourceType();
 		DataSource dataSource = this.applicationContext.getBean(dataSourreBeanName, DataSource.class);
 		int pageSize = pSize==null?50:pSize;
 		int pageNum = pNum==null?0:pNum;
 		int limit = pageSize;
 		int offset = pageNum > 1 ? pageSize * (pageNum - 1) : 0;
 		String queryString;
-		if (dataSourceType.equals(SqlUtils.NAME_ORACLE)) {
+		if (dataSourceType.getType().equals(SqlUtils.NAME_ORACLE)) {
 			queryString = "SELECT * FROM(SELECT rownum rnum,a.* FROM(" + sql + " ORDER BY " + orderBy
 					+ ")a WHERE rownum<=" + offset + "+" + limit + ")WHERE rnum>=" + (offset + 1);
 		} else {
@@ -234,7 +235,7 @@ public class ViewDaoImpl implements ViewDao {
 	public ViewEn getViewInfo(String dataSourreBeanName, String sql,Map<String, Object> critParams) {
 		String dataSourceName = SqlUtils.getDataSourceName(dataSourreBeanName);
 		DataSource ds = this.applicationContext.getBean(dataSourceName, DataSource.class);
-		String sourceType = tableDao.getDatabaseType(ds);
+		DatabaseType sourceType = tableDao.getDatabaseType(ds);
 		ViewEn viewEn = new ViewEn();
 		List<ViewField> listFields = tableDao.listFieldType(ds,sourceType, sql, critParams);
 		viewEn.setListFields(listFields);

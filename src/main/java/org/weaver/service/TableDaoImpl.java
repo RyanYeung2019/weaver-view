@@ -32,6 +32,7 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.weaver.config.entity.ViewField;
+import org.weaver.table.entity.DatabaseType;
 import org.weaver.table.entity.FieldEn;
 import org.weaver.table.entity.ForeignKeyEn;
 import org.weaver.table.entity.ForeignRefFieldEn;
@@ -58,7 +59,7 @@ public class TableDaoImpl implements TableDao{
 	private ApplicationContext applicationContext;
 	
 	
-	public String getDatabaseType(DataSource dataSource) {
+	public DatabaseType getDatabaseType(DataSource dataSource) {
 		Connection conn = DataSourceUtils.getConnection(dataSource);
 		try {
 			return getDatabaseType(conn);
@@ -72,12 +73,15 @@ public class TableDaoImpl implements TableDao{
 		}			
 	}
 
-	private String getDatabaseType(Connection conn) {
+	private DatabaseType getDatabaseType(Connection conn) {
+		DatabaseType result = new DatabaseType();
 		String type = null;
 		try {
 			if (conn != null && (!conn.isClosed())) {
 				DatabaseMetaData metaData = conn.getMetaData();
 				String databaseProductName = metaData.getDatabaseProductName().toLowerCase();
+				result.setMajorVersion(metaData.getDatabaseMajorVersion());
+				result.setMinorVersion(metaData.getDatabaseMinorVersion());
 				if (databaseProductName.matches("(?i).*mysql.*")) {
 					type = SqlUtils.NAME_MYSQL;
 				} else if (databaseProductName.matches("(?i).*oracle.*")) {
@@ -97,7 +101,8 @@ public class TableDaoImpl implements TableDao{
 		} catch (SQLException e) {
 			throw new RuntimeException("Failed to create tables for dashboards database.", e);
 		}
-		return type;
+		result.setType(type);
+		return result;
 	}
 	
 	public int[] executeSqlBatch(DataSource dataSource, List<MapSqlParameterSource> data, String sql) {
@@ -189,7 +194,7 @@ public class TableDaoImpl implements TableDao{
 		final Map<String,List<TableFK>> tableForeig = new HashMap<>();
 		tableForeig.put(tableEn.getTableId(), new ArrayList<>());
 		DataSource dataSource = this.applicationContext.getBean(dsName, DataSource.class);
-		String sourceType = this.getDatabaseType(dataSource);
+		DatabaseType sourceType = this.getDatabaseType(dataSource);
 		tableEn.setSourceType(sourceType);
 		Connection conn = DataSourceUtils.getConnection(dataSource);
 
@@ -359,7 +364,7 @@ public class TableDaoImpl implements TableDao{
 	}	
 
 
-	public List<ViewField> listFieldType(DataSource dataSource,String sourceType, String queryStr,
+	public List<ViewField> listFieldType(DataSource dataSource,DatabaseType sourceType, String queryStr,
 			Map<String, Object> critParams) {
 		Object[] params = NamedParameterUtils.buildValueArray(queryStr, critParams);
 		String sql = NamedParameterUtils.parseSqlStatementIntoString(queryStr);
@@ -367,7 +372,7 @@ public class TableDaoImpl implements TableDao{
 		Connection conn = DataSourceUtils.getConnection(dataSource);
 		PreparedStatement psIns = null;
 		try {
-			if (sourceType.equals(SqlUtils.NAME_ORACLE)) {
+			if (sourceType.getType().equals(SqlUtils.NAME_ORACLE)) {
 				psIns = conn.prepareStatement("SELECT * FROM("+sql+")WHERE rownum=0");
 			} else {
 				psIns = conn.prepareStatement("SELECT * FROM("+sql+")"+SqlUtils.varName()+" LIMIT 0");
