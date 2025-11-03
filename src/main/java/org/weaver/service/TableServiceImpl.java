@@ -85,7 +85,7 @@ public class TableServiceImpl implements TableService {
 						if(!firstKey) {
 							whereKey.append(" and ");
 						}
-						whereKey.append(fieldEn.getFieldDb() + "=? ");
+						whereKey.append(fieldEn.getFieldDbSql() + "=? ");
 						values.add(item.get(field));
 						firstKey = false;
 					}
@@ -258,18 +258,18 @@ public class TableServiceImpl implements TableService {
 						if(keyFields.contains(fieldEn.getFieldDb())) {
 							if(!firstKey) {
 								keysString.append(",");
-								mergeUsingOn.append(",");
+								mergeUsingOn.append(" and ");
 							}
-							keysString.append(fieldEn.getFieldDb());
-							mergeUsingOn.append("t."+fieldEn.getFieldDb() +" = s."+fieldEn.getFieldDb());
+							keysString.append(fieldEn.getFieldDbSql());
+							mergeUsingOn.append("t."+fieldEn.getFieldDbSql() +" = s."+fieldEn.getFieldDbSql());
 							firstKey = false;						
 						}else {
 							if(!firstVal) {
 								upValues.append(",");
 								mergeUpdateField.append(",");
 							}
-							upValues.append(fieldEn.getFieldDb() + "=:"+fieldEn.getField() );
-							mergeUpdateField.append("t."+fieldEn.getFieldDb()+" = s."+fieldEn.getFieldDb() );
+							upValues.append(fieldEn.getFieldDbSql() + "=:"+fieldEn.getField() );
+							mergeUpdateField.append("t."+fieldEn.getFieldDbSql()+" = s."+fieldEn.getFieldDbSql() );
 							firstVal = false;						
 						}
 					}

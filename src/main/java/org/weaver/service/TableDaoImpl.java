@@ -223,7 +223,7 @@ public class TableDaoImpl implements TableDao{
                     String fieldDb = keys.getString("COLUMN_NAME");
                     int keySeq = keys.getInt("KEY_SEQ");
                     pk.add(keys.getString("pk_name"));
-                    String field = FormatterUtils.toCamelCase(fieldDb.toLowerCase());
+                    String field = FormatterUtils.toCamelCase(fieldDb);
                     PrimaryKeyEn genDataPkEn = new PrimaryKeyEn(field,fieldDb);
                     genDataPkEn.setSortField(Integer.valueOf(keySeq));
                     primaryKeyEns.add(genDataPkEn);
@@ -250,7 +250,7 @@ public class TableDaoImpl implements TableDao{
                         if(indexEns.contains(indexEn)){
                         	indexEn = indexEns.get(indexEns.indexOf(indexEn));
                         }
-						String field = FormatterUtils.toCamelCase(fieldName.toLowerCase());
+						String field = FormatterUtils.toCamelCase(fieldName);
                 		IndexFieldEn indexFieldEn = new IndexFieldEn(field,fieldName);
 						indexFieldEn.setSortField(sortField);
 						indexFieldEn.setField(field);
@@ -278,11 +278,11 @@ public class TableDaoImpl implements TableDao{
                     while(impkey.next()){
                         String fkName = impkey.getString("fk_name").toLowerCase();
                         String fkcolumnName = impkey.getString("fkcolumn_name");
-                        String fkcolumnNameField = FormatterUtils.toCamelCase(fkcolumnName.toLowerCase());
+                        String fkcolumnNameField = FormatterUtils.toCamelCase(fkcolumnName);
 
                         String pktableName = impkey.getString("pktable_name");
                         String pkcolumnName = impkey.getString("pkcolumn_name");
-                        String pkcolumnNameField = FormatterUtils.toCamelCase(pkcolumnName.toLowerCase());
+                        String pkcolumnNameField = FormatterUtils.toCamelCase(pkcolumnName);
                         int keySeq = impkey.getInt("key_seq");
                         ForeignKeyEn foreignKeyEn = new ForeignKeyEn(fkName);
                         if(foreignKeyEns.contains(foreignKeyEn)){
@@ -310,7 +310,6 @@ public class TableDaoImpl implements TableDao{
 						Integer precision = columns.getInt("COLUMN_SIZE");
 						Integer scale = columns.getInt("DECIMAL_DIGITS");
 						String isNullable = columns.getString("IS_NULLABLE");
-						String defaultValue = columns.getString("COLUMN_DEF");
                         String fieldId = FormatterUtils.toCamelCase(colName);
                         FieldEn genDataFieldEn = new FieldEn(fieldId);
                         genDataFieldEn.setRemark(StringUtils.hasText(fieldLabel)?fieldLabel:null);
@@ -320,7 +319,6 @@ public class TableDaoImpl implements TableDao{
                         genDataFieldEn.setTypeDb(typeDb);
                         genDataFieldEn.setPreci(precision);
 						genDataFieldEn.setScale(scale);
-						genDataFieldEn.setDefaultValue(defaultValue);
                         fieldEns.add(genDataFieldEn);
                     }
                     tableEn.setFieldEns(fieldEns);

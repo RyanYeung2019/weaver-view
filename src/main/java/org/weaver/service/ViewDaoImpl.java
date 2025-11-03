@@ -32,6 +32,7 @@ import org.weaver.config.entity.ViewEn;
 import org.weaver.config.entity.ViewField;
 import org.weaver.query.entity.SortByField;
 import org.weaver.query.entity.ViewData;
+import org.weaver.table.entity.AggregateEn;
 import org.weaver.table.entity.DatabaseType;
 import org.weaver.view.util.FormatterUtils;
 
@@ -60,9 +61,13 @@ public class ViewDaoImpl implements ViewDao {
 
 	public LinkedHashMap<String, Object> queryViewAggregate(ViewEn viewEn, Map<String, Object> queryParams, FilterCriteria filter,
 			List<String> aggrField) {
-		List<String> aggParam = new ArrayList<>();
+		List<AggregateEn> aggParam = new ArrayList<>();
 		Map<String, String> fieldToCamel = new HashMap<>();
-		aggParam.add("0-count");
+		AggregateEn defAgg = new AggregateEn();
+		defAgg.setAggType("count");
+		defAgg.setFieldDb("0");
+		defAgg.setFieldDbSql("0");
+		aggParam.add(defAgg);
 		if (aggrField != null) {
 			Map<String, ViewField> fieldMap = viewEn.getFieldMap();
 			for (String fieldAggType : aggrField) {
@@ -76,7 +81,12 @@ public class ViewDaoImpl implements ViewDao {
 					String fieldDb = viewField.getFieldDb();
 					String fieldName = fieldDb + "_" + aggType.toLowerCase();
 					fieldToCamel.put(fieldName, FormatterUtils.toCamelCase(fieldName));
-					aggParam.add(fieldDb+"-"+aggType.toUpperCase());
+					AggregateEn aggField = new AggregateEn();
+					aggField.setAggType(aggType.toUpperCase());
+					aggField.setFieldDb(fieldDb);
+					String fieldDbSql = SqlUtils.sqlDbKeyWordEscape(fieldDb,viewEn.getSourceType()).replace("'", "''");
+					aggField.setFieldDbSql(fieldDbSql);
+					aggParam.add(aggField);
 				}
 			}
 		}
@@ -116,13 +126,13 @@ public class ViewDaoImpl implements ViewDao {
 		return result;
 	}
 	
-	private String getSimpleCountAggSql(String defaultCountFieldName, final String sql, List<String> aggregate) {
+	private String getSimpleCountAggSql(String defaultCountFieldName, final String sql, List<AggregateEn> aggregate) {
 		List<String> fields = new ArrayList<>();
-		for (String fieldAggr : aggregate) {
-			String[] fieldAggrArr = fieldAggr.split("-");
-			String field = fieldAggrArr[0];
-			String aggType = fieldAggrArr[1];
-			String fieldStr = String.format("%s(%s) AS %s", aggType, field,
+		for (AggregateEn fieldAggr : aggregate) {
+			String field = fieldAggr.getFieldDb();
+			String aggType = fieldAggr.getAggType();
+			String fieldDbSql = fieldAggr.getFieldDbSql();
+			String fieldStr = String.format("%s(%s) AS %s", aggType, fieldDbSql,
 					field.equals("0") ? defaultCountFieldName : (field+"_"+aggType.toLowerCase()));
 			fields.add(fieldStr);
 		}

@@ -37,8 +37,6 @@ public class FieldEn  implements Serializable {
     
     private String remark;
     
-    private String defaultValue;
-
 	public FieldEn(String field) {
 		super();
 		this.field = field;
@@ -131,15 +129,6 @@ public class FieldEn  implements Serializable {
 	public void setRemark(String remark) {
 		this.remark = remark;
 	}
-
-	public String getDefaultValue() {
-		return defaultValue;
-	}
-
-	public void setDefaultValue(String defaultValue) {
-		this.defaultValue = defaultValue;
-	}
-
 	public String getFieldDbSql() {
 		return fieldDbSql;
 	}
@@ -169,8 +158,7 @@ public class FieldEn  implements Serializable {
 	public String toString() {
 		return "FieldEn [field=" + field + ", fieldDb=" + fieldDb + ", nullable=" + nullable + ", type=" + type
 				+ ", typeDb=" + typeDb + ", typeJava=" + typeJava + ", sqlType=" + sqlType + ", preci=" + preci
-				+ ", scale=" + scale + ", autoInc=" + autoInc + ", remark=" + remark + ", defaultValue="
-				+ defaultValue + "]";
+				+ ", scale=" + scale + ", autoInc=" + autoInc + ", remark=" + remark + "]";
 	}
 
 }
