@@ -1,4 +1,4 @@
-package org.weaver.table.entity;
+package org.weaver.query.entity;
 
 public class AggregateEn {
 	private String AggType;

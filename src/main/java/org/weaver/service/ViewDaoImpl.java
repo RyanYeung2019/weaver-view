@@ -30,9 +30,9 @@ import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Component;
 import org.weaver.config.entity.ViewEn;
 import org.weaver.config.entity.ViewField;
+import org.weaver.query.entity.AggregateEn;
 import org.weaver.query.entity.SortByField;
 import org.weaver.query.entity.ViewData;
-import org.weaver.table.entity.AggregateEn;
 import org.weaver.table.entity.DatabaseType;
 import org.weaver.view.util.FormatterUtils;
 
@@ -64,7 +64,7 @@ public class ViewDaoImpl implements ViewDao {
 		List<AggregateEn> aggParam = new ArrayList<>();
 		Map<String, String> fieldToCamel = new HashMap<>();
 		AggregateEn defAgg = new AggregateEn();
-		defAgg.setAggType("count");
+		defAgg.setAggType(AGGRTYPE_COUNT);
 		defAgg.setFieldDb("0");
 		defAgg.setFieldDbSql("0");
 		aggParam.add(defAgg);
@@ -84,8 +84,7 @@ public class ViewDaoImpl implements ViewDao {
 					AggregateEn aggField = new AggregateEn();
 					aggField.setAggType(aggType.toUpperCase());
 					aggField.setFieldDb(fieldDb);
-					String fieldDbSql = SqlUtils.sqlDbKeyWordEscape(fieldDb,viewEn.getSourceType()).replace("'", "''");
-					aggField.setFieldDbSql(fieldDbSql);
+					aggField.setFieldDbSql(SqlUtils.sqlDbKeyWordEscape(fieldDb,viewEn.getSourceType()).replace("'", "''"));
 					aggParam.add(aggField);
 				}
 			}

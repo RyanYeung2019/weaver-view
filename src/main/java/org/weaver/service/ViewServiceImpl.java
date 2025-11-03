@@ -56,11 +56,6 @@ public class ViewServiceImpl implements ViewService {
 
 	@Autowired
 	LangDefine langDefine;
-	
-
-
-	
-
 
 	public String translateText(String text, RequestConfig viewReqConfig, Map<String, Object> tranParamMap) {
 		for(String key:viewReqConfig.getParams().keySet()) {
