@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.text.ParseException;
@@ -101,11 +102,20 @@ public class Utils {
     
     public static Object convertEntityValue(Object value,Class<?> type) {
     	Object result = value;
-		if(!value.getClass().toString().equals(type.toString())) {
-			if(value instanceof Integer && "class java.lang.Boolean".equals(type.toString())) {
+    	String typeStr = type.toString();
+		if(!value.getClass().toString().equals(typeStr)) {
+			if(value instanceof Integer && "class java.lang.Boolean".equals(typeStr)) {
 				result=((Integer)value).intValue()==1?true:false;
 			}
-			if(value instanceof String && "class java.util.Date".equals(type.toString())) {
+			if(value instanceof BigDecimal && "class java.lang.Boolean".equals(typeStr)) {
+				BigDecimal v = (BigDecimal) value;
+				result = Integer.parseInt(v.toString())==1?true:false;
+			}
+			if(value instanceof BigDecimal && "class java.lang.Integer".equals(typeStr)) {
+				BigDecimal v = (BigDecimal) value;
+				result = Integer.parseInt(v.toString());
+			}
+			if(value instanceof String && "class java.util.Date".equals(typeStr)) {
 				SimpleDateFormat simpleDateFormat =  new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 				try {
 					result = simpleDateFormat.parse((String)value);

@@ -150,9 +150,8 @@ public class TableDaoImpl implements TableDao{
         SqlParameterSource parameterSource = new MapSqlParameterSource(data);
         Integer result=0;
         if(autoIncrementField!=null) {
-        	String aiField = autoIncrementField.getField();
             KeyHolder keyHolder = new GeneratedKeyHolder();
-            result = namedParameterJdbcTemplate.update(sql, parameterSource, keyHolder, new String[]{aiField} );
+            result = namedParameterJdbcTemplate.update(sql, parameterSource, keyHolder, new String[]{autoIncrementField.getFieldDb()});
             Number keys = keyHolder.getKey();
            	data.put(autoIncrementField.getField(), keys.longValue());            	
         }else {
