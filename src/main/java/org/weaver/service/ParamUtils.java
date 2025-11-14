@@ -3,7 +3,6 @@ package org.weaver.service;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.util.StringUtils;
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
 import org.weaver.query.entity.QueryFilter;
@@ -64,7 +63,6 @@ class ParamUtils {
 	static QueryFilter filterConver(String filter) {
 		JSONObject filterCriteria = null;
 		if (StringUtils.hasText(filter)) {
-			//filterCriteria = JSON.parseObject(Utils.urlDecoder(filter));
 			filterCriteria = SafeJson.safeParseToJSONObject(Utils.urlDecoder(filter));
 		}
 		return  filterCriteria != null ? new QueryFilter(filterCriteria) : null;

@@ -21,7 +21,7 @@ import org.weaver.query.entity.QueryFilter;
 import org.weaver.query.entity.RequestConfig;
 import org.weaver.query.mapper.CamelFieldMapper;
 import org.weaver.view.util.FormatterUtils;
-import org.weaver.view.util.Utils;
+
 
 /**
  *
@@ -133,7 +133,6 @@ public class Translator {
 				String json = matcherJson.group(0);
 				key = key.replace(json, "").trim();
 				json = json.replace("\\\"", "\"");
-				//tranParam = JSONObject.parseObject(json);
 				tranParam = SafeJson.safeParseToJSONObject(json);
 			}
 			String val = tranKey(key,tranParam);
