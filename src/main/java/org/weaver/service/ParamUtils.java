@@ -64,7 +64,8 @@ class ParamUtils {
 	static QueryFilter filterConver(String filter) {
 		JSONObject filterCriteria = null;
 		if (StringUtils.hasText(filter)) {
-			filterCriteria = JSON.parseObject(Utils.urlDecoder(filter));
+			//filterCriteria = JSON.parseObject(Utils.urlDecoder(filter));
+			filterCriteria = SafeJson.safeParseToJSONObject(Utils.urlDecoder(filter));
 		}
 		return  filterCriteria != null ? new QueryFilter(filterCriteria) : null;
 	}

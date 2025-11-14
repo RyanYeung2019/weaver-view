@@ -1,4 +1,9 @@
 package org.weaver.table.entity;
+/**
+*
+* @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+* 
+*/
 
 public class DatabaseType {
 	

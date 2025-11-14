@@ -1,4 +1,9 @@
 package org.weaver.query.entity;
+/**
+*
+* @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+* 
+*/
 
 public class AggregateEn {
 	private String AggType;

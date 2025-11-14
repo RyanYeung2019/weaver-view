@@ -184,7 +184,7 @@ public class TableServiceImpl implements TableService {
             transactionManager.commit(txStatus);
         } catch (Exception e) {
             transactionManager.rollback(txStatus);
-        	log.error("rollback for exception",e);
+        	log.error("Transaction rolled back due to the occurrence of:",e);
             throw new RuntimeException(e);
         }
 	}
@@ -229,7 +229,6 @@ public class TableServiceImpl implements TableService {
 			StringBuffer values = new StringBuffer();
 			StringBuffer upValues = new StringBuffer();
 			StringBuffer keysString= new StringBuffer();
-			
 			
 			StringBuffer mergeUsing = new StringBuffer();
 			StringBuffer mergeUsingOn = new StringBuffer();

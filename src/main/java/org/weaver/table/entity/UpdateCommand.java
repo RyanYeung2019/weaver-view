@@ -1,7 +1,13 @@
 package org.weaver.table.entity;
 
 import java.util.List;
-	
+
+/**
+*
+* @author <a href="mailto:30808333@qq.com">Ryan Yeung</a>
+* 
+*/
+
 	public class UpdateCommand<T> {
 	
 	private String command;
