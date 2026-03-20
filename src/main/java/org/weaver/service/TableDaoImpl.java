@@ -374,41 +374,52 @@ public class TableDaoImpl implements TableDao{
 			} else {
 				psIns = conn.prepareStatement("SELECT * FROM("+sql+")"+SqlUtils.varName()+" LIMIT 0");
 			}
+			psIns.setMaxRows(0);
+			psIns.setFetchSize(0);
+			psIns.setQueryTimeout(5);
+			psIns.setPoolable(true);
+//			psIns.setReadOnly(true);
 			PreparedStatementSetter pss = new ArgumentPreparedStatementSetter(params);
 			pss.setValues(psIns);
-			List<String> checkExistsField = new ArrayList<>();
-			try (ResultSet rSet = psIns.executeQuery()) {
-				ResultSetMetaData rem = rSet.getMetaData();
-				for (int i = 1; i <= rem.getColumnCount(); i++) {
-					String name = rem.getColumnName(i);
-					if (checkExistsField.contains(name)) {
-						throw new RuntimeException(queryStr + " has duplicate fields!");
-					}
-					checkExistsField.add(name);
-					int sqlType = rem.getColumnType(i);
-					String type = rem.getColumnClassName(i);
-					Integer precision = rem.getPrecision(i);
-					Integer scale = rem.getScale(i);
-					String typeDb = rem.getColumnTypeName(i);
-					int nullable = rem.isNullable(i);
-					String fieldName = FormatterUtils.toCamelCase(name);
-					ViewField viewField = new ViewField(fieldName);
-					viewField.setFieldDb(name);
-					viewField.setSqlType(sqlType);
-					viewField.setType(FormatterUtils.convertSqlType(name, sqlType));
-					viewField.setTypeDb(typeDb);
-					viewField.setTypeJava(type);
-					
-					viewField.setPreci(precision);
-					viewField.setScale(scale);
-					if (nullable == ResultSetMetaData.columnNoNulls) {
-						viewField.setNullable(false);
-					}
-					if (nullable == ResultSetMetaData.columnNullable) {
-						viewField.setNullable(true);
-					}
-					listFields.add(viewField);
+			ResultSetMetaData rem = psIns.getMetaData();
+			if(rem == null) {
+				try (ResultSet rSet = psIns.executeQuery()) {
+					rem = rSet.getMetaData();
 				}
+			}
+			if(rem == null) {
+				throw new RuntimeException("Unable to read metadata for query:"+ queryStr);
+			}
+			List<String> checkExistsField = new ArrayList<>();
+			for (int i = 1; i <= rem.getColumnCount(); i++) {
+				String name = rem.getColumnName(i);
+				if (checkExistsField.contains(name)) {
+					throw new RuntimeException(queryStr + " has duplicate fields!");
+				}
+				checkExistsField.add(name);
+				int sqlType = rem.getColumnType(i);
+				String type = rem.getColumnClassName(i);
+				Integer precision = rem.getPrecision(i);
+				Integer scale = rem.getScale(i);
+				String typeDb = rem.getColumnTypeName(i);
+				int nullable = rem.isNullable(i);
+				String fieldName = FormatterUtils.toCamelCase(name);
+				ViewField viewField = new ViewField(fieldName);
+				viewField.setFieldDb(name);
+				viewField.setSqlType(sqlType);
+				viewField.setType(FormatterUtils.convertSqlType(name, sqlType));
+				viewField.setTypeDb(typeDb);
+				viewField.setTypeJava(type);
+				
+				viewField.setPreci(precision);
+				viewField.setScale(scale);
+				if (nullable == ResultSetMetaData.columnNoNulls) {
+					viewField.setNullable(false);
+				}
+				if (nullable == ResultSetMetaData.columnNullable) {
+					viewField.setNullable(true);
+				}
+				listFields.add(viewField);
 			}			
 		}catch (SQLException ex) {
 			JdbcUtils.closeStatement(psIns);

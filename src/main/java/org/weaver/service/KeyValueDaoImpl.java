@@ -31,8 +31,9 @@ public class KeyValueDaoImpl implements KeyValueDao{
 		String dataSourreBeanName = setting.getDataSourceName();
 		DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourreBeanName), DataSource.class);
 		if(setting.getSourceType()==null)setting.setSourceType(tableDao.getDatabaseType(dataSource));
-		if(setting.getTypeData()==null)setting.setTypeData(new LinkedHashMap<>());
-		setting.getTypeData().put(setting.getKey(), key);
+		LinkedHashMap<String,Object> typeData = new LinkedHashMap<>();
+		if(setting.getTypeData()!=null) typeData.putAll(setting.getTypeData());
+		typeData.put(setting.getKey(), key);
 		String selectSql = setting.getSelectSql();
 		if(selectSql==null) {
 			Map<String,String> tableInfo = SqlUtils.tableNameInfo(setting.getTable(),setting.getSourceType());
@@ -42,11 +43,11 @@ public class KeyValueDaoImpl implements KeyValueDao{
 			sql.append(" from ");
 			sql.append(tableNameSql.replace("'","''"));
 			sql.append(" where ");
-			sql.append(setting.getTypeData().keySet().stream().map(s->SqlUtils.sqlDbKeyWordEscape(s,setting.getSourceType())+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
+			sql.append(typeData.keySet().stream().map(s->SqlUtils.sqlDbKeyWordEscape(s,setting.getSourceType())+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
 			selectSql = sql.toString();
 			setting.setSelectSql(selectSql);
 		}
-		Object[] values = setting.getTypeData().values().stream().toArray();
+		Object[] values = typeData.values().stream().toArray();
 		List<Map<String,Object>> datas = tableDao.listData(dataSource,values,selectSql);
 		if(datas.size()>1)throw new RuntimeException("Return more than one record!");
 		if(datas.size()==0) return null;
@@ -59,8 +60,9 @@ public class KeyValueDaoImpl implements KeyValueDao{
 		DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourreBeanName), DataSource.class);
 		if(setting.getSourceType()==null)setting.setSourceType(tableDao.getDatabaseType(dataSource));
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-		if(setting.getTypeData()==null)setting.setTypeData(new LinkedHashMap<>());
-		setting.getTypeData().put(setting.getKey(), key);
+		LinkedHashMap<String,Object> typeData = new LinkedHashMap<>();
+		if(setting.getTypeData()!=null) typeData.putAll(setting.getTypeData());
+		typeData.put(setting.getKey(), key);
 		String updateSql = setting.getUpdateSql();
 		if(updateSql==null) {
 			Map<String,String> tableInfo = SqlUtils.tableNameInfo(setting.getTable(),setting.getSourceType());
@@ -70,12 +72,12 @@ public class KeyValueDaoImpl implements KeyValueDao{
 			sql.append(" set ");
 			sql.append(data.keySet().stream().map(s->SqlUtils.sqlDbKeyWordEscape(s,setting.getSourceType())+"=? ").collect(Collectors.joining(",")).replace("'","''"));
 			sql.append(" where ");
-			sql.append(setting.getTypeData().keySet().stream().map(s->SqlUtils.sqlDbKeyWordEscape(s,setting.getSourceType())+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
+			sql.append(typeData.keySet().stream().map(s->SqlUtils.sqlDbKeyWordEscape(s,setting.getSourceType())+"=? ").collect(Collectors.joining(" and ")).replace("'","''"));
 			updateSql = sql.toString();
 			setting.setUpdateSql(updateSql);
 		}
 		List<Object> result = new ArrayList<>(data.values());
-		result.addAll(new ArrayList<>(setting.getTypeData().values()));
+		result.addAll(new ArrayList<>(typeData.values()));
 		return jdbcTemplate.update(updateSql,result.stream().toArray());
 	}	
 	
@@ -84,8 +86,9 @@ public class KeyValueDaoImpl implements KeyValueDao{
 		DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourreBeanName), DataSource.class);
 		if(setting.getSourceType()==null)setting.setSourceType(tableDao.getDatabaseType(dataSource));
 		JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-		if(setting.getTypeData()==null)setting.setTypeData(new LinkedHashMap<>());
-		setting.getTypeData().put(setting.getKey(), key);
+		LinkedHashMap<String,Object> typeData = new LinkedHashMap<>();
+		if(setting.getTypeData()!=null)typeData.putAll(setting.getTypeData());
+		typeData.put(setting.getKey(), key);
 		String insertSql = setting.getInsertSql();
 		if(insertSql==null) {
 			Map<String,String> tableInfo = SqlUtils.tableNameInfo(setting.getTable(),setting.getSourceType());
@@ -93,16 +96,16 @@ public class KeyValueDaoImpl implements KeyValueDao{
 			StringBuffer sql = new StringBuffer("insert into ");
 			sql.append(tableNameSql.replace("'","''"));
 			sql.append("(");
-			sql.append(setting.getTypeData().keySet().stream().map(s->SqlUtils.sqlDbKeyWordEscape(s,setting.getSourceType())).collect(Collectors.joining(",")).replace("'","''")+","); 
+			sql.append(typeData.keySet().stream().map(s->SqlUtils.sqlDbKeyWordEscape(s,setting.getSourceType())).collect(Collectors.joining(",")).replace("'","''")+","); 
 			sql.append(data.keySet().stream().map(s->SqlUtils.sqlDbKeyWordEscape(s,setting.getSourceType())).collect(Collectors.joining(",")).replace("'","''")); 
 			sql.append(")values(");
-			sql.append(setting.getTypeData().keySet().stream().map(s->"?").collect(Collectors.joining(","))+",");
+			sql.append(typeData.keySet().stream().map(s->"?").collect(Collectors.joining(","))+",");
 			sql.append(data.keySet().stream().map(s->"?").collect(Collectors.joining(",")));
 			sql.append(")");
 			insertSql = sql.toString();
 			setting.setInsertSql(insertSql);
 		}
-		List<Object> result = new ArrayList<>(setting.getTypeData().values());
+		List<Object> result = new ArrayList<>(typeData.values());
 		result.addAll(new ArrayList<>(data.values()));
 		return jdbcTemplate.update(insertSql,result.stream().toArray());
 	}

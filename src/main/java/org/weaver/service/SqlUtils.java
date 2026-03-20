@@ -160,6 +160,9 @@ class SqlUtils {
 		Object result = val;
 		if (ViewField.FIELDTYPE_BOOLEAN.equals(type)) {
 			result = Boolean.valueOf(val.toString());
+			if(val instanceof Integer && NAME_MYSQL.equals(dataSourceType.getType())) {
+				result = ((Integer)val).intValue();
+			}
 		}
 		if (!NAME_SQLITE.equals(dataSourceType.getType()) && ViewField.FIELDTYPE_DATE.equals(type) && val instanceof String ) {
 			try {

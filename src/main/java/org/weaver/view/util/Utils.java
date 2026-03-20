@@ -105,11 +105,25 @@ public class Utils {
     	String typeStr = type.toString();
 		if(!value.getClass().toString().equals(typeStr)) {
 			if(value instanceof Integer && "class java.lang.Boolean".equals(typeStr)) {
-				result=((Integer)value).intValue()==1?true:false;
+				Integer val = ((Integer)value).intValue();
+				if(val.equals(0)){
+					result = false;
+				}else if(val.equals(1)){
+					result = true;
+				}else{
+					result = val;
+				}
 			}
 			if(value instanceof BigDecimal && "class java.lang.Boolean".equals(typeStr)) {
 				BigDecimal v = (BigDecimal) value;
-				result = Integer.parseInt(v.toString())==1?true:false;
+				Integer val = Integer.parseInt(v.toString());
+				if(val.equals(0)){
+					result = false;
+				}else if(val.equals(1)){
+					result = true;
+				}else{
+					result = val;
+				}
 			}
 			if(value instanceof BigDecimal && "class java.lang.Integer".equals(typeStr)) {
 				BigDecimal v = (BigDecimal) value;
