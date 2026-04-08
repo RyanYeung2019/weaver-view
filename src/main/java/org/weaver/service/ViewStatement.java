@@ -52,7 +52,6 @@ public interface ViewStatement {
 
 	public ViewData<Map<String, Object>> query();
 
-	
 	public ViewData<TreeData<Map<String, Object>>> queryTree()throws Exception ;
 	
 	public <T> ViewData<TreeData<T>> queryTree( RowMapper<T> rowMapper);

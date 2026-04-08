@@ -371,6 +371,8 @@ public class TableDaoImpl implements TableDao{
 		try {
 			if (sourceType.getType().equals(SqlUtils.NAME_ORACLE)) {
 				psIns = conn.prepareStatement("SELECT * FROM("+sql+")WHERE rownum=0");
+			} else if (sourceType.getType().equals(SqlUtils.NAME_MSSQL)) {
+				psIns = conn.prepareStatement("SELECT TOP 0 * FROM("+sql+")"+SqlUtils.varName());
 			} else {
 				psIns = conn.prepareStatement("SELECT * FROM("+sql+")"+SqlUtils.varName()+" LIMIT 0");
 			}

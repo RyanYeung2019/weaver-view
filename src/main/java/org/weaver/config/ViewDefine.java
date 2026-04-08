@@ -1,5 +1,6 @@
 package org.weaver.config;
 
+import java.sql.ResultSetMetaData;
 import java.util.regex.Pattern;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -19,6 +20,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.weaver.view.util.FormatterUtils;
 import org.yaml.snakeyaml.Yaml;
 import com.alibaba.fastjson.JSONObject;
 
@@ -31,6 +33,7 @@ import org.weaver.service.ViewDao;
 import org.weaver.service.ViewQuery;
 import org.weaver.service.ViewStatementImpl;
 import org.weaver.view.util.Utils;
+
 
 /**
  *
@@ -122,7 +125,74 @@ public class ViewDefine {
 		}
 		return message.toString()+nonDefinedParamStr.toString();
 	}
-	
+	public ViewEn cloneView(ViewEn sourceView){
+        ViewEn viewEn = new ViewEn();
+        List<ViewField> listFields = new ArrayList<>();
+        for(ViewField sourceViewField:sourceView.getListFields()){
+            ViewField viewField = new ViewField(sourceViewField.getField());
+            viewField.setFieldDb(sourceViewField.getField());
+            viewField.setSqlType(sourceViewField.getSqlType());
+            viewField.setType(sourceViewField.getType());
+            viewField.setTypeDb(sourceViewField.getTypeDb());
+            viewField.setTypeJava(sourceViewField.getTypeJava());
+
+            viewField.setPreci(sourceViewField.getPreci());
+            viewField.setScale(sourceViewField.getScale());
+            viewField.setNullable(sourceViewField.getNullable());
+
+            if (sourceViewField.getEnumApi()!=null){
+                EnumApiEn sourceEnumApiEn = sourceViewField.getEnumApi();
+                EnumApiEn enumApiEn = new EnumApiEn();
+                enumApiEn.setViewId(sourceEnumApiEn.getViewId());
+                enumApiEn.setValueField(sourceEnumApiEn.getValueField());
+                enumApiEn.setTextField(sourceEnumApiEn.getTextField());
+                if(sourceEnumApiEn.getParam()!=null){
+                    enumApiEn.setParam(new LinkedHashMap<>(sourceEnumApiEn.getParam()));
+                }
+                viewField.setEnumApi(enumApiEn);
+            }
+
+            if (sourceViewField.getEnumDataMap() != null)
+                viewField.setEnumDataMap(new LinkedHashMap<>(sourceViewField.getEnumDataMap()));
+
+            if(sourceViewField.getEnumDataList()!= null &&  !sourceViewField.getEnumDataList().isEmpty() ){
+                List<EnumItemEn> enumDataList = new ArrayList<>();
+                for(EnumItemEn sourceEnumItemEn:sourceViewField.getEnumDataList()){
+                    EnumItemEn enumItemEn = new EnumItemEn(sourceEnumItemEn.getValue(),sourceEnumItemEn.getText());
+                    enumDataList.add(enumItemEn);
+                }
+                viewField.setEnumDataList(enumDataList);
+            }
+            viewField.setEnumDataString(sourceViewField.getEnumDataString());
+            listFields.add(viewField);
+        }
+        viewEn.setListFields(listFields);
+
+        viewEn.setDataSource(sourceView.getDataSource());
+        viewEn.setSourceType(sourceView.getSourceType());
+
+        viewEn.setViewId(sourceView.getViewId());
+        viewEn.setName(sourceView.getName());
+        viewEn.setParam(sourceView.getParam());
+        viewEn.setRemark(sourceView.getRemark());
+        viewEn.setSql(sourceView.getSql());
+        viewEn.setMeta(sourceView.getMeta());
+        viewEn.setProps(sourceView.getProps());
+
+        Map<String, ViewField> fieldMap = new HashMap<>();
+        for (ViewField viewField : viewEn.getListFields()) {
+            String fieldName = viewField.getField();
+            fieldMap.put(fieldName, viewField);
+        }
+        viewEn.setFieldMap(fieldMap);
+        viewEn.setTreeId(sourceView.getTreeId());
+        viewEn.setTreeParent(sourceView.getTreeParent());
+        if(sourceView.getTreeSearch()!=null && !sourceView.getTreeSearch().isEmpty()) {
+            List<String> treeSearchList = new ArrayList<>(sourceView.getTreeSearch());
+            viewEn.setTreeSearch(treeSearchList);
+        }
+        return sourceView;
+    }
 	@SuppressWarnings("unchecked")
 	private ViewEn loadView(String viewId,String fileValue,List<String> nonDefinedParam ) throws IOException {
 		Yaml yaml = new Yaml();
@@ -272,7 +342,7 @@ public class ViewDefine {
 				viewField.setEnumDataList(enumDataListFields.get(fieldName));
 			if (enumDataStringFields != null)
 				viewField.setEnumDataString(enumDataStringFields.get(fieldName));
-			fieldMap.put(viewField.getField(), viewField);
+			fieldMap.put(fieldName, viewField);
 		}
 		
 		LinkedHashMap<String, Object> tree = (LinkedHashMap<String, Object>) rmkData.get("tree");

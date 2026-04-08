@@ -134,7 +134,12 @@ public class ViewStatementImpl implements ViewStatement {
 			if(viewEn.getStatus()<0) {
 				throw new RuntimeException(viewEn.getRemark());
 			}
-			return viewService.query(viewEn, params, sortField, pageNum, pageSize, queryFilter, aggrList, rowMapper,
+            ViewEn clonedViewEn = viewService.cloneView(viewEn);
+            if(clonedViewEn.getDataSource()!=null && !clonedViewEn.getDataSource().equals(this.dataSource)){
+                clonedViewEn.setDataSource(this.dataSource);
+                clonedViewEn.setSourceType(viewService.getSourceType(this.dataSource));
+            }
+			return viewService.query(clonedViewEn, params, sortField, pageNum, pageSize, queryFilter, aggrList, rowMapper,
 					viewReqConfig);
 		} else {
 			ViewEn viewEn = viewService.getViewInfo(this.dataSource, sql,tableId,params);
@@ -153,18 +158,26 @@ public class ViewStatementImpl implements ViewStatement {
 	
 	public <T> ViewData<TreeData<T>> queryTree( RowMapper<T> rowMapper) {
 		Date startTime = new Date();
+        ViewEn viewEn = viewService.getViewInfo(viewId);
+        if (viewEn == null)
+            throw new RuntimeException(String.format("view %s is not exits! ", viewId));
+        if(viewEn.getStatus()<0) {
+            throw new RuntimeException(viewEn.getRemark());
+        }
+        ViewEn clonedViewEn = viewService.cloneView(viewEn);
+        if(clonedViewEn.getDataSource()!=null && !clonedViewEn.getDataSource().equals(this.dataSource)){
+            clonedViewEn.setDataSource(this.dataSource);
+            clonedViewEn.setSourceType(viewService.getSourceType(this.dataSource));
+        }
 		String keyValue = ParamUtils.stringDecoder(value);
 		ViewData<TreeData<T>> data = new ViewData<>();
 		if (sortField != null) {
 			String searchValue = ParamUtils.stringDecoder(search);
-			data = viewService.queryTree(viewId, level, keyValue, params, sortField, searchValue, rowMapper, viewReqConfig);
+			data = viewService.queryTree(clonedViewEn, level, keyValue, params, sortField, searchValue, rowMapper, viewReqConfig);
 		} else {
-			data = viewService.queryTreePath(viewId, keyValue, params, rowMapper, viewReqConfig);
+			data = viewService.queryTreePath(clonedViewEn, keyValue, params, rowMapper, viewReqConfig);
 		}
-		ViewEn viewEn = viewService.getViewInfo(viewId);
-		if (viewEn == null)
-			throw new RuntimeException(String.format("view %s is not exits! ", viewId));
-		viewService.updateViewInfo(viewEn, data, viewReqConfig);
+		viewService.updateViewInfo(clonedViewEn, data, viewReqConfig);
 		data.setStartTime(startTime);
 		data.setEndTime(new Date());
 		return data;	

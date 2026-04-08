@@ -10,6 +10,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -29,10 +30,13 @@ import org.weaver.query.entity.TreeData;
 import org.weaver.query.entity.ViewData;
 import org.weaver.query.mapper.BeanPropRowMapper;
 import org.weaver.query.mapper.CamelFieldMapper;
+import org.weaver.table.entity.DatabaseType;
 import org.weaver.table.entity.FieldEn;
 import org.weaver.table.entity.TableEn;
 import org.weaver.view.util.FormatterUtils;
 import com.alibaba.fastjson.JSONObject;
+
+import javax.sql.DataSource;
 
 /**
  *
@@ -56,6 +60,9 @@ public class ViewServiceImpl implements ViewService {
 
 	@Autowired
 	LangDefine langDefine;
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
 	public String translateText(String text, RequestConfig viewReqConfig, Map<String, Object> tranParamMap) {
 		for(String key:viewReqConfig.getParams().keySet()) {
@@ -203,17 +210,14 @@ public class ViewServiceImpl implements ViewService {
 		}
 	}
 	
-	public <T> ViewData<TreeData<T>> queryTree(String viewId, Integer level, String parentValue, Map<String, Object> params,
+	public <T> ViewData<TreeData<T>> queryTree(ViewEn viewEn, Integer level, String parentValue, Map<String, Object> params,
 			SortByField[] sortField, String search, RowMapper<T> rowMapper, RequestConfig viewReqConfig) {
 		if (level == null)
 			level = Integer.MAX_VALUE;
-		ViewEn viewEn = viewDefine.getView(viewId);
-		if (viewEn == null)
-			throw new RuntimeException(String.format("view %s is not exits! ", viewId));
 		String treeId=viewEn.getTreeId();
 		String treeParent=viewEn.getTreeParent();
 		if(treeId==null||treeParent==null) {
-			throw new RuntimeException(String.format("View %s is not support for query tree. One of id field, parent field is undefined!", viewId));
+			throw new RuntimeException(String.format("View %s is not support for query tree. One of id field, parent field is undefined!", viewEn.getViewId()));
 		}
 		ViewData<TreeData<T>> treeData = new ViewData<>();
 		List<TreeData<T>> data = queryTree(viewEn,treeId,treeParent,level,0,parentValue,params,
@@ -273,18 +277,15 @@ public class ViewServiceImpl implements ViewService {
 		return result;
 	}
 	
-	public <T> ViewData<TreeData<T>> queryTreePath(String viewId, String keyValue, Map<String, Object> params,
+	public <T> ViewData<TreeData<T>> queryTreePath(ViewEn viewEn, String keyValue, Map<String, Object> params,
 			RowMapper<T> rowMapper,RequestConfig viewReqConfig) {
-		log.debug("queryTreePath:" + viewId);
+		log.debug("queryTreePath:{}",viewEn.getViewId());
 		if (keyValue == null)
 			throw new RuntimeException("Value is not allow null!");
-		ViewEn viewEn = viewDefine.getView(viewId);
-		if (viewEn == null)
-			throw new RuntimeException(String.format("view %s is not exits! ", viewId));
 		String treeId=viewEn.getTreeId();
 		String treeParent=viewEn.getTreeParent();
 		if(treeId==null||treeParent==null) {
-			throw new RuntimeException(String.format("View %s is not support for query tree. One of id field, parent field is undefined!", viewId));
+			throw new RuntimeException(String.format("View %s is not support for query tree. One of id field, parent field is undefined!", viewEn.getViewId()));
 		}
 		ViewData<TreeData<T>> treeData = new ViewData<>();
 		List<TreeData<T>> data = queryTreePath(viewEn,treeId,treeParent,keyValue,params,rowMapper,viewReqConfig);
@@ -293,12 +294,21 @@ public class ViewServiceImpl implements ViewService {
 		treeData.setData(data);
 		return treeData;
 	}
-	
-	
+
 	public ViewEn getViewInfo(String viewId) {
 		return viewDefine.getView(viewId);
 	}
-	
+
+    public ViewEn cloneView(ViewEn source){
+        return viewDefine.cloneView(source);
+    }
+
+    public DatabaseType getSourceType(String dataSourceBeanName){
+        DataSource dataSource = this.applicationContext.getBean(dataSourceBeanName, DataSource.class);
+        DatabaseType sourceType = tableDao.getDatabaseType(dataSource);
+        return sourceType;
+    }
+
 	public ViewEn getViewInfo(String dataSource, String sql,String tableId,Map<String, Object> critParams) {
 		String viewKey = tableId==null?sql:tableId;
 		ViewEn viewEn = this.getViewInfo(viewKey);

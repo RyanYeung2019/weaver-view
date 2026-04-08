@@ -11,6 +11,7 @@ import org.weaver.query.entity.RequestConfig;
 import org.weaver.query.entity.SortByField;
 import org.weaver.query.entity.TreeData;
 import org.weaver.query.entity.ViewData;
+import org.weaver.table.entity.DatabaseType;
 
 /**
  *
@@ -41,17 +42,21 @@ interface ViewService {
 
 	<T> void updateViewInfo(ViewEn viewEn, ViewData<T> data, RequestConfig viewReqConfig);
 
-	<T> ViewData<TreeData<T>> queryTree(String viewId, Integer level, String parentValue, Map<String, Object> params,
+	<T> ViewData<TreeData<T>> queryTree(ViewEn viewEn, Integer level, String parentValue, Map<String, Object> params,
 			SortByField[] sortField, String search, RowMapper<T> rowMapper, RequestConfig viewReqConfig);
 
 	<T> List<TreeData<T>> queryTree(ViewEn viewEn, String keyField, String parentField, Integer level,
 			Integer currentLevel, String parentValue, Map<String, Object> params, SortByField[] sortField,
 			String search, RowMapper<T> rowMapper, RequestConfig viewReqConfig);
 
-	<T> ViewData<TreeData<T>> queryTreePath(String viewId, String keyValue, Map<String, Object> params,
+	<T> ViewData<TreeData<T>> queryTreePath(ViewEn viewEn, String keyValue, Map<String, Object> params,
 			RowMapper<T> rowMapper, RequestConfig viewReqConfig);
 
 	ViewEn getViewInfo(String viewId);
+
+    ViewEn cloneView(ViewEn source);
+
+    DatabaseType getSourceType(String dataSourceBeanName);
 
 	ViewEn getViewInfo(String dataSource, String sql,String tableId, Map<String, Object> critParams);
 

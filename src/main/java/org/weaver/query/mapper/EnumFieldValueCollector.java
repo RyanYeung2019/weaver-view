@@ -46,7 +46,7 @@ class EnumFieldValueCollector {
 	Object getFieldValue(ResultSet rs, ViewField field)throws SQLException{
 		if(field==null)return null;
 		String fieldCamel = field.getField();
-		Object value = rs.getObject(field.getFieldDb());
+		Object value = JdbcColumnValueReader.readValue(rs, field);
 		StringBuffer valueBuffer = new StringBuffer();
 		boolean hasParam = false;
 		EnumApiEn apiEnum = field.getEnumApi();
@@ -63,8 +63,8 @@ class EnumFieldValueCollector {
 					for (String key : paramMap.keySet()) {
 						hasParam = true;
 						String paramField = paramMap.get(key);
-						String paramFieldDB = fieldMap.get(paramField).getFieldDb();
-						Object paramValue = rs.getObject(paramFieldDB);
+						ViewField paramViewField = fieldMap.get(paramField);
+						Object paramValue = JdbcColumnValueReader.readValue(rs, paramViewField);
 						newItem.put(paramField, paramValue);
 						String paramValueStr = FormatterUtils.objectToString(paramValue);
 						valueBuffer.append((paramValueStr == null ? "null" : paramValueStr) + "_");
