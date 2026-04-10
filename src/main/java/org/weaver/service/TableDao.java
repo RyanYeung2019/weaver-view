@@ -19,7 +19,9 @@ import org.weaver.table.entity.TableEn;
 public interface TableDao {
 	
 	DatabaseType getDatabaseType(DataSource dataSource);
-	
+
+    void emptyTableCache();
+
 	TableEn getTableInfo(String dataSource, String table); 
 	
 	int executeInsert(DataSource dataSource, Map<String,Object> data, String sql, FieldEn autoIncrementField);

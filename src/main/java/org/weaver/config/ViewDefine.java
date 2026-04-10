@@ -59,6 +59,8 @@ public class ViewDefine {
 	@Autowired
 	private Environment environment;
 
+    private String dataSource;
+
 	private Hashtable<String, ViewEn> viewMap = new Hashtable<>();
 
 	public ViewEn getView(String viewKey) {
@@ -68,7 +70,12 @@ public class ViewDefine {
 	public void putView(String viewId,ViewEn viewEn) {
 		this.viewMap.put(viewId, viewEn);	
 	}
-	
+
+    public String loadView(String dataSource) throws IOException {
+        this.dataSource = dataSource;
+        return this.loadView();
+    }
+
 	public String loadView() throws IOException {
 		PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
 		String settingStr = "weaver-view.view.path";
@@ -217,6 +224,11 @@ public class ViewDefine {
 		String title = (String) rmkData.get("name");
 		String dataSource = (String) rmkData.get("dataSource");
 		dataSource = dataSource==null?ViewStatementImpl.DEFAULT_DATA_SOURCE:dataSource;
+
+        if(this.dataSource!=null){
+            dataSource = this.dataSource;
+        }
+
 		String remark = (String) rmkData.get("remark");
 		
 		Map<String, Map<String, String>> enumDataMapFields = null;

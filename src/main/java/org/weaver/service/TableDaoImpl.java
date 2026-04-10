@@ -7,12 +7,8 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.sql.DataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -183,15 +179,31 @@ public class TableDaoImpl implements TableDao{
 		return this.executeUpdate(dataSource, data, sql, checkSql, assertMaxRecordAffected);
 	}
 
+    private boolean findTable(TableEn tableEn,DatabaseMetaData dbMeta,String catalog,String database,String tableName) throws SQLException {
+        boolean foundTable = false;
+        try(ResultSet tableList = dbMeta.getTables(catalog, database,tableName,null)) {
+            while (tableList.next()) {
+                foundTable = true;
+                String tableDisp = (String) tableList.getObject("REMARKS");
+                if (tableDisp != null && tableDisp.trim().equals("")) {
+                    tableDisp = null;
+                }
+                tableEn.setRemark(tableDisp);
+            }
+        }
+        return foundTable;
+    }
+    public void emptyTableCache(){
+        CacheUtils.cacheTableMap.clear();
+    }
 	public TableEn getTableInfo(String dataSourreBeanName,String table) {
 		String dsName = SqlUtils.getDataSourceName(dataSourreBeanName);
 		String cacheKey = dsName+"|"+table;
 		TableEn tableEn = CacheUtils.cacheTableMap.get(cacheKey);
 		if(tableEn!=null) return tableEn;
+
 		tableEn = new TableEn(table);
 		tableEn.setDataSource(dsName);
-		final Map<String,List<TableFK>> tableForeig = new HashMap<>();
-		tableForeig.put(tableEn.getTableId(), new ArrayList<>());
 		DataSource dataSource = this.applicationContext.getBean(dsName, DataSource.class);
 		DatabaseType sourceType = this.getDatabaseType(dataSource);
 		tableEn.setSourceType(sourceType);
@@ -207,15 +219,46 @@ public class TableDaoImpl implements TableDao{
     		DatabaseMetaData dbMeta = conn.getMetaData();
     		String database = null;
         	List<String> pk = new ArrayList<>();
-        	try(ResultSet tableList = dbMeta.getTables(catalog, database,tableName,null)){
-                while(tableList.next()){
-                	String tableDisp =(String) tableList.getObject("REMARKS");
-                    if(tableDisp!=null && tableDisp.trim().equals("")){
-                        tableDisp = null;
+            boolean foundTable = false;
+            foundTable = findTable(tableEn,dbMeta,catalog, database,tableName);
+            if(SqlUtils.NAME_ORACLE.equals(sourceType.getType())){
+                if(catalog!=null && !catalog.isEmpty()){
+                    if(!foundTable){
+                        catalog = catalog.toUpperCase();
+                        foundTable = findTable(tableEn,dbMeta,catalog, database,tableName);
+                        tableInfo = SqlUtils.tableNameInfo(catalog+"."+tableName,tableEn.getSourceType());
                     }
-                    tableEn.setRemark(tableDisp);
+                    if(!foundTable){
+                        tableName = tableName.toUpperCase();
+                        foundTable = findTable(tableEn,dbMeta,catalog, database,tableName);
+                        tableInfo = SqlUtils.tableNameInfo(catalog+"."+tableName,tableEn.getSourceType());
+                    }
+                    if(!foundTable){
+                        catalog = catalog.toLowerCase();
+                        foundTable = findTable(tableEn,dbMeta,catalog, database,tableName);
+                        tableInfo = SqlUtils.tableNameInfo(catalog+"."+tableName,tableEn.getSourceType());
+                    }
+                    if(!foundTable){
+                        tableName = tableName.toLowerCase();
+                        foundTable = findTable(tableEn,dbMeta,catalog, database,tableName);
+                        tableInfo = SqlUtils.tableNameInfo(catalog+"."+tableName,tableEn.getSourceType());
+                    }
+                }else{
+                    if(!foundTable){
+                        tableName = tableName.toUpperCase();
+                        foundTable = findTable(tableEn,dbMeta,catalog, database,tableName);
+                        tableInfo = SqlUtils.tableNameInfo(tableName,tableEn.getSourceType());
+                    }
+                    if(!foundTable){
+                        tableName = tableName.toLowerCase();
+                        foundTable = findTable(tableEn,dbMeta,catalog, database,tableName);
+                        tableInfo = SqlUtils.tableNameInfo(tableName,tableEn.getSourceType());
+                    }
                 }
-        	}
+            }
+            if(!foundTable){
+                throw new RuntimeException("Table not found! "+tableInfo.get("tableNameSql"));
+            }
             try(ResultSet keys = dbMeta.getPrimaryKeys(catalog, database,tableName)){
             	List<PrimaryKeyEn> primaryKeyEns = new ArrayList<>();
                 while(keys.next()){

@@ -168,7 +168,6 @@ public class ViewDaoImpl implements ViewDao {
 		int limit = pageSize;
 		int offset = pageNum > 1 ? pageSize * (pageNum - 1) : 0;
 		String queryString;
-        log.info("dataSourceType:{}",dataSourceType.getType());
 		if (dataSourceType.getType().equals(SqlUtils.NAME_ORACLE)) {
 			queryString = "SELECT * FROM(SELECT rownum rnum,a.* FROM(" + sql + " ORDER BY " + orderBy
 					+ ")a WHERE rownum<=" + offset + "+" + limit + ")WHERE rnum>=" + (offset + 1);
@@ -178,7 +177,7 @@ public class ViewDaoImpl implements ViewDao {
 		} else {
 			queryString = "SELECT * FROM("+sql+")"+SqlUtils.varName()+" ORDER BY " + orderBy + " LIMIT " + limit + " OFFSET " + offset;
 		}
-		log.debug("sql:\n" + queryString);
+		log.debug("sql:\n{}" , queryString);
 		long startTotal = (new Date()).getTime();
 		long totalTime = 0l;
 		long loopTime = 0l;

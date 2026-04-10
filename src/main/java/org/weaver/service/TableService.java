@@ -16,8 +16,12 @@ import com.alibaba.fastjson.JSONObject;
 public interface TableService {
 	
 	void setTableReqConfig(RequestConfig tableReqConfig);
-	
+
+    public void emptyTableCache();
+
 	<T> List<T> listTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig, String... whereFields);
+
+    <T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig, String... whereFields);
 
 	<T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 	
@@ -28,7 +32,9 @@ public interface TableService {
 	<T> int updateTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
 	
 	<T> int deleteTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig);
-	
+
+    <T> int[] persistenTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig,String... whereFields);
+
 	<T> int[] persistenTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig);
 	
 	<T> int updateTableBatch(String dataSourceName, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields);

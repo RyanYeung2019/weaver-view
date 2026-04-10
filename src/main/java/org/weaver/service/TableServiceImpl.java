@@ -47,7 +47,11 @@ public class TableServiceImpl implements TableService {
 	LangDefine langDefine;	
 	@Autowired
 	private ApplicationContext applicationContext;
-	
+
+    public void emptyTableCache(){
+        tableDao.emptyTableCache();;
+    }
+
 	public void setTableReqConfig(RequestConfig tableReqConfig) {
 		String lang = tableReqConfig.getLanguage();
 		SimpleDateFormat dateFormat = (SimpleDateFormat) langDefine.getSetting(lang, LangDefine.FORMAT_DATE);
@@ -69,7 +73,6 @@ public class TableServiceImpl implements TableService {
 	public <T> List<T> listTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig, String... whereFields) {
 		log.info("listTable");
 		TableEn tableEn = tableDao.getTableInfo(dataSourceName, tableName);
-		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
 		if(data instanceof LinkedHashMap) {
 			LinkedHashMap<String,Object> item = (LinkedHashMap<String, Object>)data;
 			List<Object> values = new ArrayList<>();
@@ -81,14 +84,14 @@ public class TableServiceImpl implements TableService {
 				if(fieldEn!=null && item.get(field)!=null) {
 					Object value = SqlUtils.convertObjVal(fieldEn.getType(),item.get(field), requestConfig,tableEn.getSourceType());
 					item.put(field, value);
-					if(keys.stream().anyMatch(e->e.getFieldDb().equals(fieldEn.getFieldDb()))) {
-						if(!firstKey) {
-							whereKey.append(" and ");
-						}
-						whereKey.append(fieldEn.getFieldDbSql() + "=? ");
-						values.add(item.get(field));
-						firstKey = false;
-					}
+                    if(Arrays.stream(whereFields).anyMatch(fieldEn.getField()::equals)) {
+                        if(!firstKey) {
+                            whereKey.append(" and ");
+                        }
+                        whereKey.append(fieldEn.getFieldDbSql() + "=? ");
+                        values.add(item.get(field));
+                        firstKey = false;
+                    }
 				}
 			}
 			if(firstKey) throw new RuntimeException("key not found for table : "+tableName);
@@ -112,38 +115,43 @@ public class TableServiceImpl implements TableService {
 			return result;
 		}
 	}
-	
+
+    public <T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig, String... whereFields) {
+        TableEn tableEn = tableDao.getTableInfo(dataSourceName, tableName);
+        if(data instanceof LinkedHashMap) {
+            @SuppressWarnings("unchecked")
+            LinkedHashMap<String,Object> item = (LinkedHashMap<String, Object>)data;
+            List<T> listData = listTable(dataSourceName,tableName,data,requestConfig,whereFields);
+            if(listData.size()>1)throw new RuntimeException("Return more than one record!");
+            if(listData.size()>0) {
+                T listItem = listData.get(0);
+                @SuppressWarnings("unchecked")
+                Map<String,Object> dataItem = (Map<String, Object>)listItem;
+                for(FieldEn fieldEn:tableEn.getFieldEns()) {
+                    Object val = dataItem.get(fieldEn.getFieldDb());
+                    item.put(fieldEn.getField(), val);
+                }
+            }
+            JSONObject result = new JSONObject();
+            result.put("name", tableEn.getTableId());
+            result.put("remark", tableEn.getRemark());
+            result.put("fields", tableEn.getFieldEns());
+            return result;
+        }else {
+            Map<String,Object> item = Utils.entityToMap(data);
+            JSONObject result = readTable(dataSourceName,tableName,item,requestConfig);
+            Utils.mapToEntity(item, data);
+            return result;
+        }
+    }
+
 	public <T> JSONObject readTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
 		TableEn tableEn = tableDao.getTableInfo(dataSourceName, tableName);
 		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
 		String[] keyFields = keys.stream()
-                .map(PrimaryKeyEn::getFieldDb)
+                .map(PrimaryKeyEn::getField)
                 .toArray(String[]::new);
-		if(data instanceof LinkedHashMap) {
-			@SuppressWarnings("unchecked")
-			LinkedHashMap<String,Object> item = (LinkedHashMap<String, Object>)data;
-			List<T> listData = listTable(dataSourceName,tableName,data,requestConfig,keyFields);
-			if(listData.size()>1)throw new RuntimeException("Return more than one record!");
-			if(listData.size()>0) {
-				T listItem = listData.get(0);
-				@SuppressWarnings("unchecked")
-				Map<String,Object> dataItem = (Map<String, Object>)listItem;
-				for(FieldEn fieldEn:tableEn.getFieldEns()) {
-					Object val = dataItem.get(fieldEn.getFieldDb());
-					item.put(fieldEn.getField(), val);
-				}				
-			}
-			JSONObject result = new JSONObject();
-			result.put("name", tableEn.getTableId());
-			result.put("remark", tableEn.getRemark());
-			result.put("fields", tableEn.getFieldEns());
-			return result;			
-		}else {
-			Map<String,Object> item = Utils.entityToMap(data);
-			JSONObject result = readTable(dataSourceName,tableName,item,requestConfig);
-			Utils.mapToEntity(item, data);
-			return result;
-		}
+        return readTable(dataSourceName,tableName,data,requestConfig,keyFields);
 	}
 	
 	public <T> void modifyDataWithTrx(String dataSourceName,List<UpdateCommand<T>> updateCommands, RequestConfig requestConfig) {
@@ -188,15 +196,26 @@ public class TableServiceImpl implements TableService {
             throw new RuntimeException(e);
         }
 	}
-	
+
+    public <T> int[] persistenTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig,String... whereFields) {
+        DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourceName),DataSource.class);
+        requestConfig.setDataSourceName(SqlUtils.getDataSourceName(dataSourceName));
+        return this.persistenTableBatch(dataSource, tableName, dataList, requestConfig,whereFields);
+    }
+
 	public <T> int[] persistenTableBatch(String dataSourceName, String tableName, List<T> dataList, RequestConfig requestConfig) {
 		DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourceName),DataSource.class);
 		requestConfig.setDataSourceName(SqlUtils.getDataSourceName(dataSourceName));
-		return this.persistenTableBatch(dataSource, tableName, dataList, requestConfig);
+        TableEn tableEn = tableDao.getTableInfo(requestConfig.getDataSourceName(), tableName);
+        List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
+        String[] keyFields = keys.stream()
+                .map(PrimaryKeyEn::getField)
+                .toArray(String[]::new);
+		return this.persistenTableBatch(dataSource, tableName, dataList, requestConfig,keyFields);
 	}
-	
+
 	@SuppressWarnings("unchecked")
-	public <T> int[] persistenTableBatch(DataSource dataSource, String tableName, List<T> dataList, RequestConfig requestConfig) {
+	public <T> int[] persistenTableBatch(DataSource dataSource, String tableName, List<T> dataList, RequestConfig requestConfig,String... whereFields) {
 		TableEn tableEn = tableDao.getTableInfo(requestConfig.getDataSourceName(), tableName);
 		List<MapSqlParameterSource> dataForInsert = new ArrayList<>();
 		int[] result = new int[] {}; 
@@ -220,10 +239,6 @@ public class TableServiceImpl implements TableService {
 			dataForInsert.add(msps);
 		}
 		if(dataForInsert.size()>0) {
-			List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
-			List<String> keyFields = keys.stream ()
-					.map (PrimaryKeyEn::getFieldDb)
-					.collect (Collectors.toList ());
 			MapSqlParameterSource item = dataForInsert.get(0);
 			StringBuffer fields = new StringBuffer();
 			StringBuffer values = new StringBuffer();
@@ -253,8 +268,8 @@ public class TableServiceImpl implements TableService {
 					values.append(":"+fieldEn.getField());
 					mergeUsing.append(":"+fieldEn.getField() +" as "+fieldEn.getFieldDbSql());
 					mergeInsertValue.append("s."+fieldEn.getFieldDbSql());
-					if(keyFields.size()>0 ) {
-						if(keyFields.contains(fieldEn.getFieldDb())) {
+					if(whereFields.length>0 ) {
+                        if(Arrays.stream(whereFields).anyMatch(fieldEn.getField()::equals)) {
 							if(!firstKey) {
 								keysString.append(",");
 								mergeUsingOn.append(" and ");
@@ -276,7 +291,7 @@ public class TableServiceImpl implements TableService {
 			}
 
 			String sql = "INSERT INTO "+tableEn.getTableNameSql()+"("+fields+")VALUES("+values+")";
-			if(keyFields.size()>0) {
+			if(whereFields.length>0) {
 				if (tableEn.getSourceType().getType().equals(SqlUtils.NAME_MYSQL)) {
 					sql = "INSERT INTO "+tableEn.getTableNameSql()+"("+fields+")VALUES("+values+")ON DUPLICATE KEY UPDATE "+upValues;
 				} else if (tableEn.getSourceType().getType().equals(SqlUtils.NAME_PGSQL) && tableEn.getSourceType().getMajorVersion()>=9 && tableEn.getSourceType().getMinorVersion()>=5 ) {
@@ -286,7 +301,7 @@ public class TableServiceImpl implements TableService {
 				} else if (tableEn.getSourceType().getType().equals(SqlUtils.NAME_ORACLE)) {
 					sql = "MERGE INTO " + tableEn.getTableNameSql() + " t USING (SELECT "+mergeUsing+" FROM DUAL) s ON ("+mergeUsingOn+") WHEN MATCHED THEN UPDATE SET "+mergeUpdateField + " WHEN NOT MATCHED THEN INSERT ("+fields+") VALUES ("+mergeInsertValue+")";
 				} else if (tableEn.getSourceType().getType().equals(SqlUtils.NAME_MSSQL)) {
-					sql = "MERGE INTO " + tableEn.getTableNameSql() + " t USING (SELECT "+mergeUsing+") s ON ("+mergeUsingOn+") WHEN MATCHED THEN UPDATE SET "+mergeUpdateField + " WHEN NOT MATCHED THEN INSERT ("+fields+") VALUES ("+mergeInsertValue+")";
+					sql = "MERGE INTO " + tableEn.getTableNameSql() + " t USING (SELECT "+mergeUsing+") s ON ("+mergeUsingOn+") WHEN MATCHED THEN UPDATE SET "+mergeUpdateField + " WHEN NOT MATCHED THEN INSERT ("+fields+") VALUES ("+mergeInsertValue+");";
 				} else {
 					log.info("Database Support Insert Only");
 				}
@@ -343,7 +358,7 @@ public class TableServiceImpl implements TableService {
 		return this.updateTableBatch(dataSource, tableName, data, assertMaxRecordAffected, requestConfig, whereFields);
 	}
 
-	public <T> int updateTableBatch(DataSource dataSource, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields) {
+    public <T> int updateTableBatch(DataSource dataSource, String tableName, T data,Long assertMaxRecordAffected, RequestConfig requestConfig,String... whereFields) {
 		TableEn tableEn = tableDao.getTableInfo(requestConfig.getDataSourceName(), tableName);
 		Integer result = 0;
 		if(data instanceof Map ) {
@@ -385,13 +400,13 @@ public class TableServiceImpl implements TableService {
 		}
 		return result;		
 	}
-	
-	public <T> int updateTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
-		DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourceName), DataSource.class);
-		requestConfig.setDataSourceName(SqlUtils.getDataSourceName(dataSourceName));
-		return this.updateTable(dataSource, tableName, data, requestConfig);
-	}	
-	
+
+    public <T> int updateTable(String dataSourceName, String tableName, T data, RequestConfig requestConfig) {
+        DataSource dataSource = this.applicationContext.getBean(SqlUtils.getDataSourceName(dataSourceName), DataSource.class);
+        requestConfig.setDataSourceName(SqlUtils.getDataSourceName(dataSourceName));
+        return this.updateTable(dataSource, tableName, data, requestConfig);
+    }
+
 	public <T> int updateTable(DataSource dataSource, String tableName, T data, RequestConfig requestConfig) {
 		TableEn tableEn = tableDao.getTableInfo(requestConfig.getDataSourceName(), tableName);
 		List<PrimaryKeyEn> keys = tableEn.getPrimaryKeyEns();
